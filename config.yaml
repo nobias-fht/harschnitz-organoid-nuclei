@@ -1,0 +1,8 @@
+input_folder: 'step_1_output'
+output_folder: 'step_2_output'
+channels: [2,3,4]
+channel_names: ['channel2', 'channel3', 'channel4']
+weighting_d25: [.25, .5, .5]
+weighting_d50: [0.75, 1, 2]
+weighting_d75: [4, 1, 4.5]
+cellpose_model: 'models/Elisa_2024_2D'
