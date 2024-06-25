@@ -67,13 +67,16 @@ for i, dir in tqdm(enumerate(dirlist)):
                     full_w = w * Xtiles  + 5000
                     full_h = h * Ytiles  + 5000
                     new_im = np.zeros((full_w, full_h), dtype=np.uint16)
-                    print(im.shape)
+                    #print(im.shape)
                     
-                    #check to see which the smallest axis is
+                    #check to see which the smallest axis is and reshape if necessary
                     if im.shape[0] < im.shape[2]:
                          imshape = im.shape[0]
+
                     else:
-                         imshape = im.shape[2]
+                        imshape = im.shape[2]
+                        im = np.moveaxis(im, 2, 0)
+                        #print(im.shape) 
 
                     for j in range(imshape):
                         xpos = config['tile_' + str(j) + '_xpos']
