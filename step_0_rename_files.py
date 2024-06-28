@@ -11,7 +11,7 @@ output_folder = easygui.diropenbox('Select folder to save preprocessed images')
 files = os.listdir(path)
 files.sort()
 
-for i in range(0, len(files), 2):
+def recombine_file_pair(files, i):
     filename_0 = files[i].split(' ')[0]
     filename_1 = files[i+1].split(' ')[0]
     print('loading files ' + str(files[i]) + ' and ' + str(files[i+1]) + ' iteration ' + str(i))
@@ -38,4 +38,5 @@ for i in range(0, len(files), 2):
         tifffile.imwrite(output_folder + os.path.sep + filename_0 + '.tif', newim, imagej=True)
                                     
 
-
+for filenum in range(0, len(files), 2):
+    recombine_file_pair(files, filenum)
