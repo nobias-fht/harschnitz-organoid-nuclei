@@ -26,7 +26,6 @@ number_of_files = file_list.length;
 
 for (i=0; i< number_of_files; i++) {
 
-	
 
 	
     savePath_localz = saveDirectory+File.separator+"local_z";
@@ -67,13 +66,13 @@ for (i=0; i< number_of_files; i++) {
     
     close("*");
 }
-
+print("Finished pre-processing, starting flatfield estimation");
 
 imgDirectory = savePath_localz;
 
 print(imgDirectory);
 
-if(lengthOf(imgDirectory) == 0 || lengthOf(saveDirectory) == 0 || lengthOf(fileExtension) < 3) {exit("Missing arguments");};
+//if(lengthOf(imgDirectory) == 0 || lengthOf(saveDirectory) == 0 || lengthOf(fileExtension) < 3) {exit("Missing arguments");};
 
 // if(numberXTiles <= 1 && numberYTiles <= 1) {exit("Either X or Y need more tiles, both cannot be 1 or less");};
 
@@ -83,19 +82,22 @@ fileList = getFileList(imgDirectory);
 if(fileList.length == 0){exit("Image Folder appears to be empty");};
 
 setBatchMode(true);
-for (fileset = 0; fileset < 2; fileset++) {  //looop through both the localz and the sum projections
+call("java.lang.System.gc");
 	
-	for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
+for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
+	for (fileset = 0; fileset < 2; fileset++) {  //looop through both the localz and the sum projections
 	    showProgress(fileIdx, fileList.length);
 	    if(endsWith(fileList[fileIdx], fileExtension)) {
 	        //open file with Bio Formats
 	        if (fileset == 0) {
-	        run("Bio-Formats Windowless Importer", "open=["+imgDirectory+File.separator+fileList[fileIdx]+"]");
-	        filename_only = substring(fileList[fileIdx], 0, lastIndexOf(fileList[fileIdx] , '.'));
-	        ymlsavePath = saveDirectory+File.separator+filename_only;
-	        file = File.open(ymlsavePath+File.separator+"data.yml");
+	        	print("running " + fileList[fileIdx] + " local_z");
+		        run("Bio-Formats Windowless Importer", "open=["+imgDirectory+File.separator+fileList[fileIdx]+"]");
+		        filename_only = substring(fileList[fileIdx], 0, lastIndexOf(fileList[fileIdx] , '.'));
+		        ymlsavePath = saveDirectory+File.separator+filename_only;
+		        file = File.open(ymlsavePath+File.separator+"data.yml");
 	        } else {
-	        run("Bio-Formats Windowless Importer", "open=["+savePath_sum+File.separator+fileList[fileIdx]+"]");
+	       		print("running " + fileList[fileIdx] + " max projections");
+	        	run("Bio-Formats Windowless Importer", "open=["+savePath_sum+File.separator+fileList[fileIdx]+"]");
 	        }
 	        imageName = getTitle();
 	        imageTitle = substring(imageName, 0, indexOf(imageName, fileExtension));
@@ -230,6 +232,7 @@ for (fileset = 0; fileset < 2; fileset++) {  //looop through both the localz and
 	
 	
 	        run("Close All");
+	        call("java.lang.System.gc");
 	    };
 	};
 
