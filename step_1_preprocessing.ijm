@@ -102,8 +102,11 @@ for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 		        if (fileset == 0) {
 		        	print("running " + fileList[fileIdx] + " local_z");
 			        run("Bio-Formats Windowless Importer", "open=["+imgDirectory+File.separator+fileList[fileIdx]+"]");
-			        
-			        ymlsavePath = saveDirectory+File.separator+filename_only;
+					ymlsavePath = saveDirectory+File.separator+filename_only;
+			        if File.exists(ymlsavePath+File.separator+"data.yml") {
+			        	File.delete(ymlsavePath+File.separator+"data.yml");
+			        }
+
 			        file = File.open(ymlsavePath+File.separator+"data.yml");
 		        } else {
 		       		print("running " + fileList[fileIdx] + " max projections");
