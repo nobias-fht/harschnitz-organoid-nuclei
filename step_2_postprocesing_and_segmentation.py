@@ -45,49 +45,52 @@ while('sum_slices' in dirlist):
 print('restitching images')
 for i, dir in tqdm(enumerate(dirlist)):
     if not os.path.isdir(output_folder + os.path.sep + dir):
-        print('stitching image ' + dir)
-        raw_im = skimage.io.imread(sum_folder + os.path.sep + dir + '.tif')
+        if os.path.isfile(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename):
+            print('file already stitched, skipping')
+        else:
+            print('stitching image ' + dir)
+            raw_im = skimage.io.imread(sum_folder + os.path.sep + dir + '.tif')
 
-        os.makedirs(output_folder + os.path.sep + 'restitched' + os.path.sep + dir, exist_ok=True)
-        CONFIG_NAME = base_folder + os.path.sep + dir + os.path.sep + 'data.yml'
-        with open(CONFIG_NAME, "r") as f:
-            config = yaml.safe_load(f)
+            os.makedirs(output_folder + os.path.sep + 'restitched' + os.path.sep + dir, exist_ok=True)
+            CONFIG_NAME = base_folder + os.path.sep + dir + os.path.sep + 'data.yml'
+            with open(CONFIG_NAME, "r") as f:
+                config = yaml.safe_load(f)
 
-        filelist = sorted(os.listdir(base_folder + os.path.sep + dir))
-        for file in filelist:
-            if file[-4:] == '.tif':
-                if file != 'slice_mask.tif':
-                    im = skimage.io.imread(base_folder + os.path.sep + dir + os.path.sep + file)
-                    Xtiles = config['XTiles']
-                    Ytiles = config['YTiles']
-                    XOverlap = int(config['XOverlap']) 
-                    YOverlap = int(config['YOverlap']) 
-                    w = im.shape[2]
-                    h = im.shape[1]
-                    full_w = w * Xtiles  + 5000
-                    full_h = h * Ytiles  + 5000
-                    new_im = np.zeros((full_w, full_h), dtype=np.uint16)
-                    #print(im.shape)
-                    
-                    #check to see which the smallest axis is and reshape if necessary
-                    if im.shape[0] < im.shape[2]:
-                         imshape = im.shape[0]
+            filelist = sorted(os.listdir(base_folder + os.path.sep + dir))
+            for file in filelist:
+                if file[-4:] == '.tif':
+                    if file != 'slice_mask.tif':
+                        im = skimage.io.imread(base_folder + os.path.sep + dir + os.path.sep + file)
+                        Xtiles = config['XTiles']
+                        Ytiles = config['YTiles']
+                        XOverlap = int(config['XOverlap']) 
+                        YOverlap = int(config['YOverlap']) 
+                        w = im.shape[2]
+                        h = im.shape[1]
+                        full_w = w * Xtiles  + 5000
+                        full_h = h * Ytiles  + 5000
+                        new_im = np.zeros((full_w, full_h), dtype=np.uint16)
+                        #print(im.shape)
+                        
+                        #check to see which the smallest axis is and reshape if necessary
+                        if im.shape[0] < im.shape[2]:
+                            imshape = im.shape[0]
 
-                    else:
-                        imshape = im.shape[2]
-                        im = np.moveaxis(im, 2, 0)
-                        #print(im.shape) 
+                        else:
+                            imshape = im.shape[2]
+                            im = np.moveaxis(im, 2, 0)
+                            #print(im.shape) 
 
-                    for j in range(imshape):
-                        xpos = config['tile_' + str(j) + '_xpos']
-                        ypos = config['tile_' + str(j) + '_ypos']
-                        xend = config['tile_' + str(j) + '_xpos'] +  im.shape[2]
-                        yend =  config['tile_' + str(j) + '_ypos'] +  im.shape[1]                      
-                        new_im[int(ypos):int(yend), int(xpos):int(xend)] = im[j,:,:]
-                    new_im_crop = np.copy(new_im[0:raw_im.shape[0], 0:raw_im.shape[1]])
-                    filename = 'channel_' + file[-5] + '.tif'
-                    skimage.io.imsave(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename, new_im_crop, check_contrast=False)
-                    
+                        for j in range(imshape):
+                            xpos = config['tile_' + str(j) + '_xpos']
+                            ypos = config['tile_' + str(j) + '_ypos']
+                            xend = config['tile_' + str(j) + '_xpos'] +  im.shape[2]
+                            yend =  config['tile_' + str(j) + '_ypos'] +  im.shape[1]                      
+                            new_im[int(ypos):int(yend), int(xpos):int(xend)] = im[j,:,:]
+                        new_im_crop = np.copy(new_im[0:raw_im.shape[0], 0:raw_im.shape[1]])
+                        filename = 'channel_' + file[-5] + '.tif'
+                        skimage.io.imsave(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename, new_im_crop, check_contrast=False)
+                        
 #cellpose segment
 print('segmenting nuclei')
 model = models.CellposeModel(pretrained_model=cellpose_model)
@@ -96,10 +99,13 @@ os.makedirs(masks_folder, exist_ok=True)
 dirlist = os.listdir(output_folder + os.path.sep + 'restitched')
 
 for dir in dirlist:
-    print('segmenting ' + dir)
-    im = skimage.io.imread(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + 'channel_1.tif')
-    masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
-    skimage.io.imsave(masks_folder + os.path.sep + 'masks_' + dir + '.tif', masks)                                   
+    if os.path.isfile(masks_folder + os.path.sep + 'masks_' + dir + '.tif'):
+        print('file already segmented, skipping')
+    else:
+        print('segmenting ' + dir)
+        im = skimage.io.imread(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + 'channel_1.tif')
+        masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
+        skimage.io.imsave(masks_folder + os.path.sep + 'masks_' + dir + '.tif', masks)                                   
 
 image_folder = output_folder + os.path.sep + 'restitched'
 files = os.listdir(image_folder)
