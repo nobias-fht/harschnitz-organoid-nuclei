@@ -105,7 +105,7 @@ for dir in dirlist:
         print('segmenting ' + dir)
         im = skimage.io.imread(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + 'channel_1.tif')
         masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
-        skimage.io.imsave(masks_folder + os.path.sep + 'masks_' + dir + '.tif', masks)                                   
+        skimage.io.imsave(masks_folder + os.path.sep + 'masks_' + dir + '.tif', masks, check_contrast=False)                                   
 
 image_folder = output_folder + os.path.sep + 'restitched'
 files = os.listdir(image_folder)
