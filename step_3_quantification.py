@@ -22,6 +22,17 @@ os.chdir(dname)
 
 
 
+final_filenames = []
+final_total_cells = []
+final_ch2 = []
+final_ch3 = []
+final_ch4 = []
+final_ch2_ch3 = []
+final_ch3_ch4 = []
+final_ch2_ch4 = []
+
+df_final = pd.DataFrame()
+
 #output_folder = 'step_2_output_new'
 output_folder = easygui.diropenbox('Select folder output from step 2')
 image_folder = output_folder + os.path.sep + 'restitched'
@@ -85,6 +96,15 @@ for i, file in enumerate(files):
         total_positive_list.append(positive_count)
         percentages.append(round((positive_count / total_cells), 2))
     
+        if channel == 2:
+            final_ch2.append(positive_count)
+        if channel == 3:  
+            final_ch3.append(positive_count)
+        if channel == 4:
+            final_ch4.append(positive_count)
+
+
+
         #make the channel images
         intensity_image = skimage.io.imread (intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif')
         intensity_image[intensity_image<thresh] = 0
@@ -98,22 +118,43 @@ for i, file in enumerate(files):
     total_positive_list.append(double_pos)
     percentages.append(round((double_pos / total_cells), 2))
     thresholds.append(-1)
+    final_ch2_ch3.append(double_pos)    
 
     channel_names.append(channel_names[0+1] + '+' + channel_names[2+1])
     double_pos = calculate_all_double_positives(channels_to_quantify[0], channels_to_quantify[2], df)
     total_positive_list.append(double_pos)
     percentages.append(round((double_pos / total_cells), 2))
     thresholds.append(-1)
-    
+    final_ch2_ch4.append(double_pos)
+
+
     channel_names.append(channel_names[1+1] + '+' + channel_names[2+1])
     double_pos = calculate_all_double_positives(channels_to_quantify[1], channels_to_quantify[2], df)
     total_positive_list.append(double_pos)
     percentages.append(round((double_pos / total_cells), 2))
     thresholds.append(-1)
+    final_ch3_ch4.append(double_pos)
+    
     print(channel_names)
     df_summary['channels'] = channel_names
     df_summary['threshold'] = thresholds
     df_summary['count'] = total_positive_list
     df_summary['percent'] = percentages
     
+
+    final_filenames.append(file)
+    final_total_cells.append(total_cells)
+  
+
     df_summary.to_csv(report_folder + os.path.sep + file + '_summary.csv', index=False)
+
+df_final['filenames'] = final_filenames
+df_final['total_cells'] = final_total_cells 
+df_final['ch2'] = final_ch2
+df_final['ch3'] = final_ch3
+df_final['ch4'] = final_ch4
+df_final['ch2_ch3'] = final_ch2_ch3
+df_final['ch2_ch4'] = final_ch2_ch4
+df_final['ch3_ch4'] = final_ch3_ch4
+
+df_final.to_csv(output_folder + os.path.sep + 'final_summary.csv', index=False)
