@@ -1,4 +1,4 @@
-Installing the pipeline
+#Installing the pipeline
 
 1. Copy the contents of the pipeline to a folder
 2. In the terminal, navigate to that folder
@@ -8,7 +8,7 @@ Installing the pipeline
 5. Add the sites: `BaSiC` and `Labkit`,  `IJBP-Plugins`, and `Local Z Projector`
 6. Move the file “local_z.py” into the Fiji folder, under the `scripts/plugins` folder. If this folder does not exist, you may have to make it.
 
-Running the pipeline
+#Running the pipeline
 
 1. Renaming the images and converting from nd2 to tif
     1. Open an anaconda terminal and navigate to where you stored the pipeline
