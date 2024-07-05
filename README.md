@@ -1,3 +1,8 @@
+# Introduction
+
+Pipeline for segmenting and quantifying nuclear marker expression in organoid slices.
+Written by Damian Dalle Nogare at the BioImage Analysis Infrastruture Unit of the National Facility for Data Handling and Analysis at Human Technopole, Milan.
+
 # Installing the pipeline
 
 1. Copy the contents of the pipeline to a folder
