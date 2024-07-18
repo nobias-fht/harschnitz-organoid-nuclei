@@ -5,7 +5,7 @@ Written by Damian Dalle Nogare at the BioImage Analysis Infrastruture Unit of th
 
 # Installing the pipeline
 
-1. Copy the contents of the pipeline to a folder
+1. Copy the contents of the pipeline to a folder (you can pull the latest version into a git repository by using the command `git pull https://github.com/nobias-fht/harschnitz-organoid-nuclei`)
 2. In the terminal, navigate to that folder
 3. Create a conda environment by typing
 `conda env create -f environment.yml`
@@ -39,11 +39,13 @@ Written by Damian Dalle Nogare at the BioImage Analysis Infrastruture Unit of th
 8. Run the script postprocessing and segmentation step by typing `python3 step_2_postprocesing_and_segmentation.py` into the terminal
 9. Follow the prompts to select the output folder from step one, and the input folder you just made
 10. Checking the results
-    1. Check a single file by typing `python3 check_single_file.py`
-    2. When prompted, navigate to the output folder from part 2, and open the `restitched` folder. Within this folder, open a folder containing the image to check and select OK
-    3. Check the predictions of the pipeline
-    4. If necessary, adjust the appropriate weight in the `config.yaml` file
-    5. Repeat as necessary for other files
+    1. Check files and thresholds using  `python3 check_thresholds.py`
+    2. Click the `Load an Image` button, and open the `restitched` folder. Within this folder, open a folder containing the image to check and select OK
+    3. Select a channel using the dropdown, and click the `apply new threshold` button  
+    4. Check the predictions of the pipeline
+    5. If necessary, adjust the appropriate weight using the slider
+    6. Repeat as necessary for other channels and other files (opening a new file using the `Load and Image` button when needed)
+    7. Update the weights in the `config.yaml` file when finished
 11. Quantify the data
     1. Run the quantification by typing `python3 step_3_quantification.py` 
     2. When prompted, select the output folder from step 2
