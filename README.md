@@ -15,6 +15,8 @@ Written by Damian Dalle Nogare at the BioImage Analysis Infrastruture Unit of th
 
 # Running the pipeline
 
+Before running, ensure that you have the latest version of the script by running the terminal command "git pull" from the folder you have the scripts installed in.
+
 1. Renaming the images and converting from nd2 to tif
     1. Open an anaconda terminal and navigate to where you stored the pipeline
     2. Activate the environment by typing `conda activate harschnitz_pipeline`
