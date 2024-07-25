@@ -103,7 +103,7 @@ for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 		        	print("running " + fileList[fileIdx] + " local_z");
 			        run("Bio-Formats Windowless Importer", "open=["+imgDirectory+File.separator+fileList[fileIdx]+"]");
 					ymlsavePath = saveDirectory+File.separator+filename_only;
-			        if File.exists(ymlsavePath+File.separator+"data.yml") {
+			        if (File.exists(ymlsavePath+File.separator+"data.yml")) {
 			        	File.delete(ymlsavePath+File.separator+"data.yml");
 			        }
 
