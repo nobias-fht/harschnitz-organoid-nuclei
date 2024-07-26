@@ -44,52 +44,53 @@ while('sum_slices' in dirlist):
 
 print('restitching images')
 for i, dir in tqdm(enumerate(dirlist)):
-    if not os.path.isdir(output_folder + os.path.sep + dir):
-        if os.path.isfile(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename):
-            print('file already stitched, skipping')
-        else:
-            print('stitching image ' + dir)
-            raw_im = skimage.io.imread(sum_folder + os.path.sep + dir + '.tif')
+    #if not os.path.isdir(output_folder + os.path.sep + dir):
+    if os.path.isfile(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + 'channel_4.tif'):
+        print('file already stitched, skipping')
+        continue
+    else:
+        print('stitching image ' + dir)
+        raw_im = skimage.io.imread(sum_folder + os.path.sep + dir + '.tif')
 
-            os.makedirs(output_folder + os.path.sep + 'restitched' + os.path.sep + dir, exist_ok=True)
-            CONFIG_NAME = base_folder + os.path.sep + dir + os.path.sep + 'data.yml'
-            with open(CONFIG_NAME, "r") as f:
-                config = yaml.safe_load(f)
+        os.makedirs(output_folder + os.path.sep + 'restitched' + os.path.sep + dir, exist_ok=True)
+        CONFIG_NAME = base_folder + os.path.sep + dir + os.path.sep + 'data.yml'
+        with open(CONFIG_NAME, "r") as f:
+            config = yaml.safe_load(f)
 
-            filelist = sorted(os.listdir(base_folder + os.path.sep + dir))
-            for file in filelist:
-                if file[-4:] == '.tif':
-                    if file != 'slice_mask.tif':
-                        im = skimage.io.imread(base_folder + os.path.sep + dir + os.path.sep + file)
-                        Xtiles = config['XTiles']
-                        Ytiles = config['YTiles']
-                        XOverlap = int(config['XOverlap']) 
-                        YOverlap = int(config['YOverlap']) 
-                        w = im.shape[2]
-                        h = im.shape[1]
-                        full_w = w * Xtiles  + 5000
-                        full_h = h * Ytiles  + 5000
-                        new_im = np.zeros((full_w, full_h), dtype=np.uint16)
-                        #print(im.shape)
-                        
-                        #check to see which the smallest axis is and reshape if necessary
-                        if im.shape[0] < im.shape[2]:
-                            imshape = im.shape[0]
+        filelist = sorted(os.listdir(base_folder + os.path.sep + dir))
+        for file in filelist:
+            if file[-4:] == '.tif':
+                if file != 'slice_mask.tif':
+                    im = skimage.io.imread(base_folder + os.path.sep + dir + os.path.sep + file)
+                    Xtiles = config['XTiles']
+                    Ytiles = config['YTiles']
+                    XOverlap = int(config['XOverlap']) 
+                    YOverlap = int(config['YOverlap']) 
+                    w = im.shape[2]
+                    h = im.shape[1]
+                    full_w = w * Xtiles  + 5000
+                    full_h = h * Ytiles  + 5000
+                    new_im = np.zeros((full_w, full_h), dtype=np.uint16)
+                    #print(im.shape)
+                    
+                    #check to see which the smallest axis is and reshape if necessary
+                    if im.shape[0] < im.shape[2]:
+                        imshape = im.shape[0]
 
-                        else:
-                            imshape = im.shape[2]
-                            im = np.moveaxis(im, 2, 0)
-                            #print(im.shape) 
+                    else:
+                        imshape = im.shape[2]
+                        im = np.moveaxis(im, 2, 0)
+                        #print(im.shape) 
 
-                        for j in range(imshape):
-                            xpos = config['tile_' + str(j) + '_xpos']
-                            ypos = config['tile_' + str(j) + '_ypos']
-                            xend = config['tile_' + str(j) + '_xpos'] +  im.shape[2]
-                            yend =  config['tile_' + str(j) + '_ypos'] +  im.shape[1]                      
-                            new_im[int(ypos):int(yend), int(xpos):int(xend)] = im[j,:,:]
-                        new_im_crop = np.copy(new_im[0:raw_im.shape[0], 0:raw_im.shape[1]])
-                        filename = 'channel_' + file[-5] + '.tif'
-                        skimage.io.imsave(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename, new_im_crop, check_contrast=False)
+                    for j in range(imshape):
+                        xpos = config['tile_' + str(j) + '_xpos']
+                        ypos = config['tile_' + str(j) + '_ypos']
+                        xend = config['tile_' + str(j) + '_xpos'] +  im.shape[2]
+                        yend =  config['tile_' + str(j) + '_ypos'] +  im.shape[1]                      
+                        new_im[int(ypos):int(yend), int(xpos):int(xend)] = im[j,:,:]
+                    new_im_crop = np.copy(new_im[0:raw_im.shape[0], 0:raw_im.shape[1]])
+                    filename = 'channel_' + file[-5] + '.tif'
+                    skimage.io.imsave(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename, new_im_crop, check_contrast=False)
                         
 #cellpose segment
 print('segmenting nuclei')
@@ -129,25 +130,26 @@ for i, file in enumerate(files):
         df = pd.DataFrame()
 
         for position, channel in enumerate(channels_to_quantify):
-            marked = np.zeros(mask.shape, dtype=np.uint16)
-            measure_im = skimage.io.imread(image_folder + os.path.sep + file + os.path.sep + 'channel_' + str(channel) + '.tif')
-            pixels_in_mask = measure_im[organoid_mask > 0]
-            background_array = measure_im[organoid_mask == 0]
-            nonzero_backround = background_array[background_array > 0]
-            background_mean = (np.mean(nonzero_backround))
-            background_sd = (np.std(nonzero_backround))
-            thresh_df['bg_mean_ch_' + str(channel)] = [background_mean]
-            thresh_df['bg_sd_ch_' + str(channel)] = [background_sd]
-            stats = skimage.measure.regionprops_table(mask, intensity_image=measure_im, properties=['label', 'mean_intensity'])
-            if not os.path.isfile(intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif'):
-                intensity_image = np.zeros(mask.shape, dtype=np.uint16)
-                for i, lab in enumerate(tqdm(stats['label'])):
-                    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
-                skimage.io.imsave(intensity_image_folder + os.path.sep + file  + '_ch' + str(channel) + '.tif', intensity_image, check_contrast=False)
-            rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
-            df['label'] = stats['label']
-            df['intensity_ch_' + str(channel)] = rounded_intensity
-            df.to_csv(quantification_folder + os.path.sep + file + '.csv')
-            thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
+            if not os.path.isfile(quantification_folder + os.path.sep + file + '_thresh.csv'):
+                marked = np.zeros(mask.shape, dtype=np.uint16)
+                measure_im = skimage.io.imread(image_folder + os.path.sep + file + os.path.sep + 'channel_' + str(channel) + '.tif')
+                pixels_in_mask = measure_im[organoid_mask > 0]
+                background_array = measure_im[organoid_mask == 0]
+                nonzero_backround = background_array[background_array > 0]
+                background_mean = (np.mean(nonzero_backround))
+                background_sd = (np.std(nonzero_backround))
+                thresh_df['bg_mean_ch_' + str(channel)] = [background_mean]
+                thresh_df['bg_sd_ch_' + str(channel)] = [background_sd]
+                stats = skimage.measure.regionprops_table(mask, intensity_image=measure_im, properties=['label', 'mean_intensity'])
+                if not os.path.isfile(intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif'):
+                    intensity_image = np.zeros(mask.shape, dtype=np.uint16)
+                    for i, lab in enumerate(tqdm(stats['label'])):
+                        intensity_image[mask == lab] = int(stats['mean_intensity'][i])
+                    skimage.io.imsave(intensity_image_folder + os.path.sep + file  + '_ch' + str(channel) + '.tif', intensity_image, check_contrast=False)
+                rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
+                df['label'] = stats['label']
+                df['intensity_ch_' + str(channel)] = rounded_intensity
+                df.to_csv(quantification_folder + os.path.sep + file + '.csv')
+                thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
 print('pipeline finished')
 
