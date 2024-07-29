@@ -130,26 +130,25 @@ for i, file in enumerate(files):
         df = pd.DataFrame()
 
         for position, channel in enumerate(channels_to_quantify):
-            if not os.path.isfile(quantification_folder + os.path.sep + file + '_thresh.csv'):
-                marked = np.zeros(mask.shape, dtype=np.uint16)
-                measure_im = skimage.io.imread(image_folder + os.path.sep + file + os.path.sep + 'channel_' + str(channel) + '.tif')
-                pixels_in_mask = measure_im[organoid_mask > 0]
-                background_array = measure_im[organoid_mask == 0]
-                nonzero_backround = background_array[background_array > 0]
-                background_mean = (np.mean(nonzero_backround))
-                background_sd = (np.std(nonzero_backround))
-                thresh_df['bg_mean_ch_' + str(channel)] = [background_mean]
-                thresh_df['bg_sd_ch_' + str(channel)] = [background_sd]
-                stats = skimage.measure.regionprops_table(mask, intensity_image=measure_im, properties=['label', 'mean_intensity'])
-                if not os.path.isfile(intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif'):
-                    intensity_image = np.zeros(mask.shape, dtype=np.uint16)
-                    for i, lab in enumerate(tqdm(stats['label'])):
-                        intensity_image[mask == lab] = int(stats['mean_intensity'][i])
-                    skimage.io.imsave(intensity_image_folder + os.path.sep + file  + '_ch' + str(channel) + '.tif', intensity_image, check_contrast=False)
-                rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
-                df['label'] = stats['label']
-                df['intensity_ch_' + str(channel)] = rounded_intensity
-                df.to_csv(quantification_folder + os.path.sep + file + '.csv')
-                thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
+            marked = np.zeros(mask.shape, dtype=np.uint16)
+            measure_im = skimage.io.imread(image_folder + os.path.sep + file + os.path.sep + 'channel_' + str(channel) + '.tif')
+            pixels_in_mask = measure_im[organoid_mask > 0]
+            background_array = measure_im[organoid_mask == 0]
+            nonzero_backround = background_array[background_array > 0]
+            background_mean = (np.mean(nonzero_backround))
+            background_sd = (np.std(nonzero_backround))
+            thresh_df['bg_mean_ch_' + str(channel)] = [background_mean]
+            thresh_df['bg_sd_ch_' + str(channel)] = [background_sd]
+            stats = skimage.measure.regionprops_table(mask, intensity_image=measure_im, properties=['label', 'mean_intensity'])
+            if not os.path.isfile(intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif'):
+                intensity_image = np.zeros(mask.shape, dtype=np.uint16)
+                for i, lab in enumerate(tqdm(stats['label'])):
+                    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
+                skimage.io.imsave(intensity_image_folder + os.path.sep + file  + '_ch' + str(channel) + '.tif', intensity_image, check_contrast=False)
+            rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
+            df['label'] = stats['label']
+            df['intensity_ch_' + str(channel)] = rounded_intensity
+            df.to_csv(quantification_folder + os.path.sep + file + '.csv')
+            thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
 print('pipeline finished')
 
