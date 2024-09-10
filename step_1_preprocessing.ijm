@@ -4,7 +4,7 @@
 #@ File (label="Select image folder", style="directory") imgDirectory
 #@ File (label="Choose folder where to save images", style="directory") saveDirectory
 #@ File (label = "LabKit classifier", style = "file") classifier
-
+#@ Boolean (label = "DAPI already included", style = "file") DAPI_bool
 
 #@ Float (label="Overlap percentage", value=0.07, min=0, max=1) tileOverlap
 #@ Integer (label="Camera width in px (used for computing number of tiles)", value=1600) cameraWidth
@@ -18,8 +18,11 @@ function stripWhiteSpaces(string) {
 }
 
 
-
+if (DAPI_bool) {
+	fileExtension = ".nd2";
+} else {
 fileExtension = ".tif";
+}
 
 //setBatchMode(true);
 savePath_localz = saveDirectory+File.separator+"local_z";
