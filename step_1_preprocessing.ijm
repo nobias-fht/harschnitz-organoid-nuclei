@@ -34,9 +34,14 @@ if(!File.exists(savePath_sum)) {File.makeDirectory(savePath_sum);};
 file_list = getFileList(imgDirectory);
 number_of_files = file_list.length;
 
+
+
 for (i=0; i< number_of_files; i++) {
 
-	if (!File.exists(saveDirectory + File.separator + "sum_slices" + File.separator + file_list[i])) {
+
+	filename_only = substring(file_list[i] , 0, lastIndexOf(file_list[i] , '.'));
+	
+	if (!File.exists(saveDirectory + File.separator + "sum_slices" + File.separator + filename_only + ".tif")) {
 	
 		//LOCAL Z PROJECTION
 		print("running image " + i+1 + " of " + number_of_files + ": " + file_list[i]);
@@ -56,7 +61,7 @@ for (i=0; i< number_of_files; i++) {
 	    imageTitle = substring(imageName, 0, indexOf(imageName, fileExtension));
 	    imageTitle = stripWhiteSpaces(imageTitle);
 	    run("local z");
-	    saveAs("Tiff", savePath_localz + File.separator  + file_list[i]);
+	    saveAs("Tiff", savePath_localz + File.separator  + filename_only + ".tif");
 		run("Duplicate...", "use");
 	    //selectWindow("1");
 	    run("Scale...", "x=.25 y=.25 width=1121 height=1107 interpolation=Bilinear average create title=down");
@@ -67,7 +72,7 @@ for (i=0; i< number_of_files; i++) {
 	    run("Z Project...", "projection=[Sum Slices]");
 	    run("16-bit");
 	    run("Subtract Background...", "rolling=100 stack");
-	    save(savePath_sum + File.separator + file_list[i]);
+	    save(savePath_sum + File.separator + filename_only + ".tif");
 	    
 	    close("*");
  	} else {
