@@ -19,7 +19,7 @@ abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
-
+choices = ["25", "50", "75"]
 
 
 final_filenames = []
@@ -72,13 +72,13 @@ for i, file in enumerate(files):
     for position, channel in enumerate(channels_to_quantify):
         positive_list = []
         positive_count = 0
-        if 'Day_25' in file:
+        if 'Day_25' in file or 'DIV25' in file:
             weighting = weighting_d25
-        if 'Day_50' in file:
+        if 'Day_50' in file or 'DIV50' in file:
             weighting = weighting_d50
-        if 'Day_75' in file:
+        if 'Day_75' in file or 'DIV75' in file:
             weighting = weighting_d75
-
+    
         df_positives = pd.DataFrame()
         thresh = df_thresh['bg_mean_ch_' + str(channel)] + (weighting[position] * df_thresh['bg_sd_ch_' + str(channel)])
         thresh = thresh[0]
