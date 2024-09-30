@@ -23,7 +23,7 @@ if (DAPI_bool) {
 } else {
 fileExtension = ".tif";
 }
-
+print("starting preprocessing");
 //setBatchMode(true);
 savePath_localz = saveDirectory+File.separator+"local_z";
 if(!File.exists(savePath_localz)) {File.makeDirectory(savePath_localz);};
@@ -40,6 +40,8 @@ for (i=0; i< number_of_files; i++) {
 
 
 	filename_only = substring(file_list[i] , 0, lastIndexOf(file_list[i] , '.'));
+
+	
 	
 	if (!File.exists(saveDirectory + File.separator + "sum_slices" + File.separator + filename_only + ".tif")) {
 	
@@ -61,7 +63,7 @@ for (i=0; i< number_of_files; i++) {
 	    imageTitle = substring(imageName, 0, indexOf(imageName, fileExtension));
 	    imageTitle = stripWhiteSpaces(imageTitle);
 	    run("local z");
-	    saveAs("Tiff", savePath_localz + File.separator  + filename_only + ".tif");
+	    saveAs("Tiff", savePath_localz + File.separator  + imageTitle + ".tif");
 		run("Duplicate...", "use");
 	    //selectWindow("1");
 	    run("Scale...", "x=.25 y=.25 width=1121 height=1107 interpolation=Bilinear average create title=down");
@@ -72,7 +74,7 @@ for (i=0; i< number_of_files; i++) {
 	    run("Z Project...", "projection=[Sum Slices]");
 	    run("16-bit");
 	    run("Subtract Background...", "rolling=100 stack");
-	    save(savePath_sum + File.separator + filename_only + ".tif");
+	    save(savePath_sum + File.separator + imageTitle + ".tif");
 	    
 	    close("*");
  	} else {
@@ -96,7 +98,8 @@ if(fileList.length == 0){exit("Image Folder appears to be empty");};
 
 setBatchMode(true);
 call("java.lang.System.gc");
-	
+
+fileExtension = ".tif";
 for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 	filename_only = substring(fileList[fileIdx], 0, lastIndexOf(fileList[fileIdx] , '.'));
 	print(saveDirectory + File.separator + filename_only + File.separator + filename_only + ".tif_ch4.tif");
@@ -242,7 +245,7 @@ for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 					
 					//somehow this is saturating now on the sum projected images
 					
-			        saveAs("Tiff", savePath + File.separator + imageName + "_ch" + i);
+			        saveAs("Tiff", savePath + File.separator + imageTitle + "_ch" + i);
 	
 	
 					
