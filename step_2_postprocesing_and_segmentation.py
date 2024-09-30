@@ -117,6 +117,7 @@ for i, file in enumerate(files):
         mask = skimage.io.imread(masks_folder + os.path.sep + 'masks_' + file + '.tif')
         organoid_mask = skimage.io.imread(base_folder + os.path.sep + file + os.path.sep + 'slice_mask.tif')
 
+
         if mask.shape[0] != organoid_mask.shape[0] or mask.shape[1] != organoid_mask.shape[1]:
             organoid_mask = skimage.transform.resize(organoid_mask,
                         mask.shape,
@@ -129,21 +130,32 @@ for i, file in enumerate(files):
         thresh_df = pd.DataFrame()
         df = pd.DataFrame()
 
+        if mask.max() < 2**16:
+            data_type = np.uint16
+        else:
+            data_type = np.uint32
+        #create the intensith images
         for position, channel in enumerate(channels_to_quantify):
-            marked = np.zeros(mask.shape, dtype=np.uint16)
+            #marked = np.zeros(mask.shape, dtype=np.uint16)
             measure_im = skimage.io.imread(image_folder + os.path.sep + file + os.path.sep + 'channel_' + str(channel) + '.tif')
             pixels_in_mask = measure_im[organoid_mask > 0]
             background_array = measure_im[organoid_mask == 0]
             nonzero_backround = background_array[background_array > 0]
             background_mean = (np.mean(nonzero_backround))
             background_sd = (np.std(nonzero_backround))
+            print(background_mean)
             thresh_df['bg_mean_ch_' + str(channel)] = [background_mean]
             thresh_df['bg_sd_ch_' + str(channel)] = [background_sd]
+
+
+            
             stats = skimage.measure.regionprops_table(mask, intensity_image=measure_im, properties=['label', 'mean_intensity'])
             if not os.path.isfile(intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif'):
-                intensity_image = np.zeros(mask.shape, dtype=np.uint16)
-                for i, lab in enumerate(tqdm(stats['label'])):
-                    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
+                label_to_mean_intensity = {label: mean_intensity for label, mean_intensity in zip(stats['label'], stats['mean_intensity'])}
+                label_to_mean_intensity[0] = 0
+                intensity_image = np.vectorize(label_to_mean_intensity.get)(mask)
+                #for i, lab in enumerate(tqdm(stats['label'])):
+                #    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
                 skimage.io.imsave(intensity_image_folder + os.path.sep + file  + '_ch' + str(channel) + '.tif', intensity_image, check_contrast=False)
             rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
             df['label'] = stats['label']
