@@ -159,7 +159,7 @@ layout.addWidget(text_box)
 slider = QSlider(Qt.Horizontal)
 slider.setMinimum(0)
 slider.setMinimum(0)  # 0 * 20 = 0
-slider.setMaximum(100)  # 10 * 20 = 200
+slider.setMaximum(200)  # 10 * 20 = 200
 slider.setSingleStep(1)  # 0.05 * 20 = 1
 slider.setValue(20)
 on_slider_change(20)
