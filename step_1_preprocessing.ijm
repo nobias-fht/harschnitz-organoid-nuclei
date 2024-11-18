@@ -47,7 +47,9 @@ for (i=0; i< number_of_files; i++) {
 	
 		//LOCAL Z PROJECTION
 		print("running image " + i+1 + " of " + number_of_files + ": " + file_list[i]);
-	 	open(imgDirectory + File.separator + file_list[i]);
+	 	
+	 	run("Bio-Formats Windowless Importer", "open=" + imgDirectory + File.separator + file_list[i]);
+	 	//open(imgDirectory + File.separator + file_list[i]);
 	 	
 	 	imageName = getTitle();
 	    imageTitle = substring(imageName, 0, indexOf(imageName, fileExtension));
