@@ -5,7 +5,8 @@
 #@ File (label="Choose folder where to save images", style="directory") saveDirectory
 #@ File (label = "LabKit classifier", style = "file") classifier
 #@ Boolean (label = "DAPI already included", style = "file") DAPI_bool
-
+#@ Boolean (label = "Memory Safe") memsafe
+#@ Integer (label="Position of DAPI channel", value=1) dapi_channel_position
 #@ Float (label="Overlap percentage", value=0.07, min=0, max=1) tileOverlap
 #@ Integer (label="Camera width in px (used for computing number of tiles)", value=1600) cameraWidth
 #@ Integer (label="Camera height in px (used for computing number of tiles)", value=1580) cameraHeight
@@ -23,6 +24,9 @@ if (DAPI_bool) {
 } else {
 fileExtension = ".tif";
 }
+
+fileExtension = ".tif";
+
 print("starting preprocessing");
 //setBatchMode(true);
 savePath_localz = saveDirectory+File.separator+"local_z";
@@ -44,14 +48,87 @@ for (i=0; i< number_of_files; i++) {
 	
 	
 	if (!File.exists(saveDirectory + File.separator + "sum_slices" + File.separator + filename_only + ".tif")) {
+		
+
+		if (memsafe) {
+			print("running image " + i+1 + " of " + number_of_files + ": " + file_list[i] + " in memory safe mode");
+	 	
+		 	filename = imgDirectory + File.separator + file_list[i];
+		 	
+		 	run("Bio-Formats Importer", "open=[filename] color_mode=Default rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT use_virtual_stack");
+		
+			getDimensions(w, h, channels, slices, frames);
+			imageName = getTitle();
+			print(imageName);
+	  	    imageTitle = substring(imageName, 0, indexOf(imageName, fileExtension));
+		    imageTitle = stripWhiteSpaces(imageTitle);
+		 	savePath = saveDirectory+File.separator+imageTitle;
+		 	
+		 	print(savePath);
+		 	
+		    if(!File.exists(savePath)) {File.makeDirectory(savePath);};
+			
+				//for each channel
+				for (j = 1; j <= channels; j++) {
+					print("channel " + j);
+					selectWindow(imageName);
+					//Stack.setChannel(j)
+					run("Duplicate...", "duplicate channels=" + j);
+					rename("raw_ch" + j);
+					
+					
+					getRawStatistics(count, mean, min, max, std);
+			 		if (min == 0) {
+			 			run("Replace/Remove Label(s)", "label(s)=0 final=100");
+				 			
+					}
+					run("local z");
+					rename("localz_ch" + j); 
+					
+					if (j == dapi_channel_position) {
+						run("Duplicate...", "use");
+						run("Scale...", "x=.25 y=.25 width=1121 height=1107 interpolation=Bilinear average create title=down");
+						run("Segment Image With Labkit", "input=down segmenter_file=" + classifier + " use_gpu=true");
+						run("Scale...", "x=4 y=4 width=4484 height=4428 interpolation=None create");
+						save(savePath + File.separator + "slice_mask.tif");
+					}
+					selectWindow("raw_ch" + j);
+					run("Z Project...", "projection=[Sum Slices]");
+					rename("sum_ch" + j); 
+					run("16-bit");
+					run("Subtract Background...", "rolling=100 stack");
+				
+					selectImage("raw_ch" + j);
+					run("Close");
+			}
 	
-		//LOCAL Z PROJECTION
+		stg = "";
+			for (k = 1; k <= channels; k++) {
+					stg = stg + " image" + k + "=localz_ch" + k;
+				}
+		run("Concatenate...", "title=local_z keep " + stg);
+		saveAs("Tiff", savePath_localz + File.separator  + imageTitle + ".tif");
+	
+		stg = "";		
+			for (k = 1; k <= channels; k++) {
+					stg = stg + " image" + k + "=sum_ch" + k;
+				}
+		run("Concatenate...", "title=sum_z keep " + stg);
+		saveAs("Tiff", savePath_sum + File.separator + imageTitle + ".tif");
+	
+		close("*");
+				
+			
+			
+			
+			
+		}else {
+
 		print("running image " + i+1 + " of " + number_of_files + ": " + file_list[i]);
 	 	
 	 	filename = imgDirectory + File.separator + file_list[i];
 	 	
-	 	run("Bio-Formats Windowless Importer", "open=[filename]");
-	 	//open(imgDirectory + File.separator + file_list[i]);
+	 	run("Bio-Formats Importer", "open=[filename]");
 	 	
 	 	imageName = getTitle();
 	    imageTitle = substring(imageName, 0, indexOf(imageName, fileExtension));
@@ -81,11 +158,19 @@ for (i=0; i< number_of_files; i++) {
 	    save(savePath_sum + File.separator + imageTitle + ".tif");
 	    
 	    close("*");
+	    
+		}
+	    
+	    
  	} else {
 		print("File already exists, skipping");
 	}
 }
 print("Finished pre-processing, starting flatfield estimation");
+
+
+
+
 
 imgDirectory = savePath_localz;
 
@@ -106,9 +191,9 @@ call("java.lang.System.gc");
 fileExtension = ".tif";
 for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 	filename_only = substring(fileList[fileIdx], 0, lastIndexOf(fileList[fileIdx] , '.'));
-	print(saveDirectory + File.separator + filename_only + File.separator + filename_only + ".tif_ch4.tif");
-	print(File.exists(saveDirectory + File.separator + filename_only + File.separator + filename_only + ".tif_ch4.tif"));
-	if (!File.exists(saveDirectory + File.separator + filename_only + File.separator + filename_only + ".tif_ch4.tif")) {
+	print(saveDirectory + File.separator + filename_only + File.separator + filename_only + "_ch4.tif");
+	print(File.exists(saveDirectory + File.separator + filename_only + File.separator + filename_only + "_ch4.tif"));
+	if (!File.exists(saveDirectory + File.separator + filename_only + File.separator + filename_only + "_ch4.tif")) {
 	
 		for (fileset = 0; fileset < 2; fileset++) {  //looop through both the localz and the sum projections
 		    showProgress(fileIdx, fileList.length);
@@ -170,7 +255,9 @@ for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 		         	
 					selectWindow(imageName);
 					close("\\Others");
-					run("Duplicate...", "duplicate channels=" + i);
+					setSlice(i);
+					run("Duplicate...", "use");
+		
 		         	chanName = getTitle();
 		         
 		        
