@@ -25,7 +25,7 @@ if (DAPI_bool) {
 fileExtension = ".tif";
 }
 
-fileExtension = ".tif";
+//fileExtension = ".tif";
 
 print("starting preprocessing");
 //setBatchMode(true);
