@@ -1,6 +1,10 @@
 #script developed by Damian Dalle Nogare at the Human Technopole Image Analysis Facility
 #released under BSD-3 License, 2024
 
+#TODO: fix last quantification part (remove mask reading, but keep intensity image correction)
+#TODO: change raw data processing and saving (localz for nuclei, but sum projections for quantifiction channels)
+
+
 print('starting pipeline')
 print('importing libraries')
 import skimage
@@ -25,15 +29,19 @@ with open(CONFIG_NAME, "r") as f:
 cellpose_model = config['cellpose_model']
 channels_to_quantify = config['channels']
 channel_names = config['channel_names']
+dapi_channel = config['dapi_channel']
 
 base_folder = easygui.diropenbox('Select output folder from step 1')
 output_folder = easygui.diropenbox('Select folder to store results in')
+
+#base_folder = '/facility/imganfac/neurogenomics/harschnitz/Elisa_Colombo/test_11_15'
+#output_folder = '/facility/imganfac/neurogenomics/harschnitz/Elisa_Colombo/pipeline_final/pipeline_reconfigure'
+
+
+
 sum_folder = base_folder + os.path.sep + 'local_z'
-quantification_folder = output_folder + os.path.sep + 'quantification'
-intensity_image_folder = os.path.join(output_folder + os.path.sep + 'intensity_images')
 os.makedirs(output_folder, exist_ok=True)
-os.makedirs(quantification_folder, exist_ok=True)
-os.makedirs(intensity_image_folder, exist_ok=True)
+
 
 dirlist = sorted(os.listdir(base_folder))
 
@@ -42,17 +50,25 @@ while('local_z' in dirlist):
 while('sum_slices' in dirlist):
     dirlist.remove('sum_slices')
 
-print('restitching images')
+
 for i, dir in tqdm(enumerate(dirlist)):
+    
+    restitch_folder = os.path.join(output_folder, dir, 'restitched')
+    quantification_folder = os.path.join(output_folder, dir, 'quantification')
+    intensity_image_folder = os.path.join(output_folder, dir, 'intensity_images')
+    os.makedirs(os.path.join(output_folder, dir), exist_ok=True)
+    os.makedirs(restitch_folder, exist_ok=True)
+    os.makedirs(intensity_image_folder, exist_ok=True)
+    os.makedirs(quantification_folder, exist_ok=True)
+
     #if not os.path.isdir(output_folder + os.path.sep + dir):
-    if os.path.isfile(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + 'channel_4.tif'):
-        print('file already stitched, skipping')
-        continue
+    if os.path.isfile(os.path.join(restitch_folder, 'channel_4.tif')):
+        print('file ' + dir + ' already stitched, skipping')
     else:
         print('stitching image ' + dir)
         raw_im = skimage.io.imread(sum_folder + os.path.sep + dir + '.tif')
 
-        os.makedirs(output_folder + os.path.sep + 'restitched' + os.path.sep + dir, exist_ok=True)
+        os.makedirs(os.path.join(output_folder, dir, 'restitched'), exist_ok=True)
         CONFIG_NAME = base_folder + os.path.sep + dir + os.path.sep + 'data.yml'
         with open(CONFIG_NAME, "r") as f:
             config = yaml.safe_load(f)
@@ -90,77 +106,72 @@ for i, dir in tqdm(enumerate(dirlist)):
                         new_im[int(ypos):int(yend), int(xpos):int(xend)] = im[j,:,:]
                     new_im_crop = np.copy(new_im[0:raw_im.shape[0], 0:raw_im.shape[1]])
                     filename = 'channel_' + file[-5] + '.tif'
-                    skimage.io.imsave(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + filename, new_im_crop, check_contrast=False)
+                    skimage.io.imsave(os.path.join(output_folder, dir, 'restitched', filename), new_im_crop, check_contrast=False)
                         
-#cellpose segment
-print('segmenting nuclei')
-model = models.CellposeModel(pretrained_model=cellpose_model)
-masks_folder = output_folder + os.path.sep + 'cellpose'
-os.makedirs(masks_folder, exist_ok=True)
-dirlist = os.listdir(output_folder + os.path.sep + 'restitched')
+    #cellpose segment
+    print('segmenting nuclei')
+    model = models.CellposeModel(pretrained_model=cellpose_model)
+    masks_folder = os.path.join(output_folder, dir, 'cellpose')
+    os.makedirs(masks_folder, exist_ok=True)
 
-for dir in dirlist:
     if os.path.isfile(masks_folder + os.path.sep + 'masks_' + dir + '.tif'):
         print('file already segmented, skipping')
+        masks = skimage.io.imread(os.path.join(masks_folder, 'masks_' + dir + '.tif'))                  
     else:
         print('segmenting ' + dir)
-        im = skimage.io.imread(output_folder + os.path.sep + 'restitched' + os.path.sep + dir + os.path.sep + 'channel_1.tif')
+        im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
         masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
-        skimage.io.imsave(masks_folder + os.path.sep + 'masks_' + dir + '.tif', masks, check_contrast=False)                                   
+    
+        #organoid_mask = os.path.join(masks_folder, 'organoid_masks' + 'mask_' + dir + '.tif')
+    
 
-image_folder = output_folder + os.path.sep + 'restitched'
-files = os.listdir(image_folder)
+        
+        # binary = masks + organoid_mask
+        # binary[binary > 0] = 1
 
-for i, file in enumerate(files):
-        print('quantifying ' + file)
+        # h, w = binary.shape
+        # border_mask = np.ones_like(binary, dtype=bool)
+        # border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False       #within 3% of border
+        # labs = skimage.measure.label(binary)
+        # labs = labs.astype(np.uint16)
+        # border_labs = np.unique(labs[border_mask])
+        # for border in border_labs:
+        #     labs[labs == border] = 0
 
-        mask = skimage.io.imread(masks_folder + os.path.sep + 'masks_' + file + '.tif')
-        organoid_mask = skimage.io.imread(base_folder + os.path.sep + file + os.path.sep + 'slice_mask.tif')
+        # labs[labs > 0] = 1
 
-
-        if mask.shape[0] != organoid_mask.shape[0] or mask.shape[1] != organoid_mask.shape[1]:
-            organoid_mask = skimage.transform.resize(organoid_mask,
-                        mask.shape,
-                        mode='edge',
-                        anti_aliasing=False,
-                        anti_aliasing_sigma=None,
-                        preserve_range=True,
-                        order=0)
-
-        thresh_df = pd.DataFrame()
-        df = pd.DataFrame()
-
-        if mask.max() < 2**16:
-            data_type = np.uint16
-        else:
-            data_type = np.uint32
-        #create the intensith images
-        for position, channel in enumerate(channels_to_quantify):
-            #marked = np.zeros(mask.shape, dtype=np.uint16)
-            measure_im = skimage.io.imread(image_folder + os.path.sep + file + os.path.sep + 'channel_' + str(channel) + '.tif')
-            pixels_in_mask = measure_im[organoid_mask > 0]
-            background_array = measure_im[organoid_mask == 0]
-            nonzero_backround = background_array[background_array > 0]
-            background_mean = (np.mean(nonzero_backround))
-            background_sd = (np.std(nonzero_backround))
-            print(background_mean)
-            thresh_df['bg_mean_ch_' + str(channel)] = [background_mean]
-            thresh_df['bg_sd_ch_' + str(channel)] = [background_sd]
+        # mask_im = np.multiply(masks, labs)
 
 
-            
-            stats = skimage.measure.regionprops_table(mask, intensity_image=measure_im, properties=['label', 'mean_intensity'])
-            if not os.path.isfile(intensity_image_folder + os.path.sep + file + '_ch' + str(channel) + '.tif'):
-                label_to_mean_intensity = {label: mean_intensity for label, mean_intensity in zip(stats['label'], stats['mean_intensity'])}
-                label_to_mean_intensity[0] = 0
-                intensity_image = np.vectorize(label_to_mean_intensity.get)(mask)
-                #for i, lab in enumerate(tqdm(stats['label'])):
-                #    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
-                skimage.io.imsave(intensity_image_folder + os.path.sep + file  + '_ch' + str(channel) + '.tif', intensity_image, check_contrast=False)
-            rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
-            df['label'] = stats['label']
-            df['intensity_ch_' + str(channel)] = rounded_intensity
-            df.to_csv(quantification_folder + os.path.sep + file + '.csv')
-            thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
+        skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), masks, check_contrast=False)                                   
+
+
+    
+
+
+    files = os.listdir(restitch_folder)
+
+    
+    df = pd.DataFrame()
+
+
+
+
+    for position, channel in enumerate(channels_to_quantify):
+        measure_im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_' + str(channel) + '.tif'))
+       
+        stats = skimage.measure.regionprops_table(masks, intensity_image=measure_im, properties=['label', 'mean_intensity'])
+        if not os.path.isfile(os.path.join(intensity_image_folder, 'channel_' + str(channel) + '.tif')):
+            label_to_mean_intensity = {label: mean_intensity for label, mean_intensity in zip(stats['label'], stats['mean_intensity'])}
+            label_to_mean_intensity[0] = 0
+            intensity_im = np.vectorize(label_to_mean_intensity.get)(masks)
+            #for i, lab in enumerate(tqdm(stats['label'])):
+            #    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
+            skimage.io.imsave(os.path.join(intensity_image_folder, 'channel_'  + str(channel) + '.tif'), intensity_im.astype(np.uint16), check_contrast=False)
+        rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
+        df['label'] = stats['label']
+        df['intensity_ch_' + str(channel)] = rounded_intensity
+        df.to_csv(os.path.join(quantification_folder, dir + '.csv'))
+        #thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
 print('pipeline finished')
 
