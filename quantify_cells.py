@@ -370,14 +370,21 @@ def on_apply_button_click():
         df_summary = pd.DataFrame()
 
 
-        
-        df_summary['filename'] = [folder]
-        df_summary['ch1_threshold_method'] = [ch1_seg_method]
-        df_summary['ch2_threshold_method'] = [ch2_seg_method]
-        df_summary['ch3_threshold_method'] = [ch3_seg_method]
-        df_summary['ch1_threshold_scaling'] = [ch1_scaling]
-        df_summary['ch2_threshold_scaling'] = [ch2_scaling]
-        df_summary['ch3_threshold_scaling'] = [ch3_scaling]
+        summary_labels = ['filename', 'ch2_threshold_method', 'ch3_threshold_method', 'ch4_threshold_method', 'ch2_threshold_scaling', 'ch3_threshold_scaling', 'ch4_threshold_scaling', 'total_cells']
+        for i in range(2, 5):
+            summary_labels.append('ch' + str(i) + '_threshold') 
+            summary_labels.append('ch' + str(i) + '_positive')
+     
+
+        summary_data = [folder, ch1_seg_method, ch2_seg_method, ch3_seg_method, ch1_scaling, ch2_scaling, ch3_scaling]
+
+        # df_summary['filename'] = [folder]
+        # df_summary['ch1_threshold_method'] = [ch1_seg_method]
+        # df_summary['ch2_threshold_method'] = [ch2_seg_method]
+        # df_summary['ch3_threshold_method'] = [ch3_seg_method]
+        # df_summary['ch1_threshold_scaling'] = [ch1_scaling]
+        # df_summary['ch2_threshold_scaling'] = [ch2_scaling]
+        # df_summary['ch3_threshold_scaling'] = [ch3_scaling]
 
 
         #get the mask for dapi channel
@@ -474,16 +481,25 @@ def on_apply_button_click():
 
                     skimage.io.imsave(os.path.join(folder_path, folder, 'positive_cells', file), thresholded.astype(np.uint8), check_contrast=False)
 
-
-                num_cells = np.amax(labels)
-
+                if file == 'channel_2.tif':
+                    num_cells = np.amax(labels)
+                    summary_data.append(num_cells)
                 df['labels'] = labels
                 df[file + '_intensities'] = rounded_intensity
                 df[file + '_positive'] = classification
                 
-                df_summary['total_cells'] = [num_cells]
-                df_summary[file + '_threshold'] = [round(thresh, 2)]
-                df_summary[file + '_positive'] = [sum(classification)]
+                #df_summary['total_cells'] = [num_cells]
+                #df_summary[file + '_threshold'] = [round(thresh, 2)]
+                #df_summary[file + '_positive'] = [sum(classification)]
+
+                
+                summary_data.append(round(thresh, 2))
+                summary_data.append(sum(classification))
+
+
+
+        df_summary['label'] = summary_labels
+        df_summary['data'] = summary_data
 
         df.to_csv(os.path.join(folder_path, folder, 'quantification', 'quantification.csv'))
         df_summary.to_csv(os.path.join(folder_path, folder, 'quantification', 'summary.csv'))
