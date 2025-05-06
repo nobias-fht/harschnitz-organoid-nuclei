@@ -45,7 +45,9 @@ def on_unet_button_click():
     if layer:
         viewer.layers.remove(layer)
 
-    model_path = easygui.fileopenbox(title="Select Model Checkpoint File")
+    model_path = 'checkpoints/unet.pth'
+
+    #model_path = easygui.fileopenbox(title="Select Model Checkpoint File")
     yaml_file = model_path[:-4] + '.yaml'
     print('model path: ' + str(model_path))
     print('yaml path: ' + str(yaml_file))
@@ -119,8 +121,6 @@ def on_load_button_click():
         viewer.layers.clear()
 
         #delete the current unet segmentation
-     
-
 
         im = imread(file_path)
         viewer.add_image(im, name='raw_image', blending='additive', visible=True, colormap = 'green', contrast_limits=[np.amin(im), np.amax(im)])
