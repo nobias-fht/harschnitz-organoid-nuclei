@@ -14,15 +14,18 @@ import shutil
 
 size_threshold = 100
 
+global last_path
 global global_multiplier
 global seg_method
-global current_folder
 global_multiplier = 0
 df = pd.DataFrame()
 
 CONFIG_NAME = 'config.yaml'
 with open(CONFIG_NAME, "r") as f:
 	config = yaml.safe_load(f)
+
+
+last_path = os.getcwd()
 
 dapi_channel = config['dapi_channel']
 seg_method = 'otsu'
@@ -112,49 +115,77 @@ def toggle_positive_nuclei_visibility():
         layer.visible = not layer.visible  
 
 def on_load_button_click():
-    global current_folder
+    global last_path
     print("Load Button was clicked!")
-    file_path = easygui.fileopenbox(title="Select Processed Image File")
+    file_path = easygui.diropenbox(title="Select Processed Image Folder", default=last_path)
+
+    
+
     if file_path is not None:
         
-    
+        last_path = file_path
+
+
+
         viewer.layers.clear()
+
+
+        #load all files
+
+        processed_files = os.listdir(os.path.join(file_path, 'restitched'))
+
+        for file in processed_files:
+            if file[-5] == dapi_channel:
+                processed_files.remove(file)
+
+
+        files_list = []
+        files_names_list = []
+        for file in processed_files:
+            files_list.append(skimage.io.imread(os.path.join(file_path, 'restitched', file)))
+            files_names_list.append(file)
+        
 
         #delete the current unet segmentation
 
-        im = imread(file_path)
-        viewer.add_image(im, name='raw_image', blending='additive', visible=True, colormap = 'green', contrast_limits=[np.amin(im), np.amax(im)])
-        print('file path: ' + file_path)    
-        head, tail = os.path.split(file_path)
+        #im = imread(file_path)
         
-        base_dir = os.path.sep.join(list(file_path.split('/')[0:-2])) 
-        current_folder = base_dir
+        for name, ar in zip(files_names_list, files_list):
 
-        dst_file =  os.path.join(current_folder,  'unet_output', 'unet_seg.tif')
-        if os.path.isfile(dst_file):
-            os.remove(dst_file)
-
-        seg_dir = base_dir + os.path.sep + 'cellpose'
-        seg_files = os.listdir(seg_dir)
-        seg = imread(seg_dir + os.path.sep + seg_files[0])
-        viewer.add_labels(seg, name='segmentation', blending='additive', visible=False)
-        intensity_dir = base_dir + os.path.sep + 'intensity_images'
-        intensity_image = imread(intensity_dir + os.path.sep + tail)
-
-        stats = skimage.measure.regionprops_table(seg, intensity_image=im, properties=['label', 'mean_intensity', 'area'])
-        max_label = seg.max()
-        lookup_array = np.zeros(max_label + 1, dtype=np.float32)
-        for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
-                if area > size_threshold:
-                    lookup_array[label] = mean_intensity
-        intensity_image = lookup_array[seg]
-        viewer.add_image(intensity_image, name='intensity_image', blending='additive', visible=False)
-        thresholded = np.zeros_like(intensity_image)
-        viewer.add_image(thresholded, name='thresholded', blending='additive', visible=True, colormap='red')
+            viewer.add_image(ar, name=name, blending='additive', visible=True, colormap = 'green', contrast_limits=[np.amin(im), np.amax(im)])
+       
+       
+        # print('file path: ' + file_path)    
+        # head, tail = os.path.split(file_path)
         
-        dapi_im = skimage.io.imread(os.path.join(base_dir, 'restitched', 'channel_' + str(dapi_channel) + '.tif'))
-        viewer.add_image(dapi_im, name='DAPI', blending='additive', visible=False)
-        text_box_image_name.setText(tail[6:-4])
+        # base_dir = os.path.sep.join(list(file_path.split('/')[0:-2])) 
+        # current_folder = base_dir
+
+        # dst_file =  os.path.join(current_folder,  'unet_output', 'unet_seg.tif')
+        # if os.path.isfile(dst_file):
+        #     os.remove(dst_file)
+
+        # seg_dir = base_dir + os.path.sep + 'cellpose'
+        # seg_files = os.listdir(seg_dir)
+        # seg = imread(seg_dir + os.path.sep + seg_files[0])
+        # viewer.add_labels(seg, name='segmentation', blending='additive', visible=False)
+        # intensity_dir = base_dir + os.path.sep + 'intensity_images'
+        # intensity_image = imread(intensity_dir + os.path.sep + tail)
+
+        # stats = skimage.measure.regionprops_table(seg, intensity_image=im, properties=['label', 'mean_intensity', 'area'])
+        # max_label = seg.max()
+        # lookup_array = np.zeros(max_label + 1, dtype=np.float32)
+        # for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
+        #         if area > size_threshold:
+        #             lookup_array[label] = mean_intensity
+        # intensity_image = lookup_array[seg]
+        # viewer.add_image(intensity_image, name='intensity_image', blending='additive', visible=False)
+        # thresholded = np.zeros_like(intensity_image)
+        # viewer.add_image(thresholded, name='thresholded', blending='additive', visible=True, colormap='red')
+        
+        # dapi_im = skimage.io.imread(os.path.join(base_dir, 'restitched', 'channel_' + str(dapi_channel) + '.tif'))
+        # viewer.add_image(dapi_im, name='DAPI', blending='additive', visible=False)
+        # text_box_image_name.setText(tail[6:-4])
 
     else:
         print("No file was selected.")
