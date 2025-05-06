@@ -122,39 +122,33 @@ for i, dir in tqdm(enumerate(dirlist)):
         im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
         masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
     
-        #organoid_mask = os.path.join(masks_folder, 'organoid_masks' + 'mask_' + dir + '.tif')
-    
+        organoid_mask = skimage.io.imread( os.path.join(base_folder, dir, 'slice_mask.tif'))
+         
+        binary = masks + organoid_mask
+        binary[binary > 0] = 1
 
-        
-        # binary = masks + organoid_mask
-        # binary[binary > 0] = 1
+        h, w = binary.shape
+        border_mask = np.ones_like(binary, dtype=bool)
+        border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False       #within 3% of border
+        labs = skimage.measure.label(binary)
+        labs = labs.astype(np.uint16)
+        border_labs = np.unique(labs[border_mask])
+        for border in border_labs:
+            labs[labs == border] = 0
 
-        # h, w = binary.shape
-        # border_mask = np.ones_like(binary, dtype=bool)
-        # border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False       #within 3% of border
-        # labs = skimage.measure.label(binary)
-        # labs = labs.astype(np.uint16)
-        # border_labs = np.unique(labs[border_mask])
-        # for border in border_labs:
-        #     labs[labs == border] = 0
+        labs[labs > 0] = 1
 
-        # labs[labs > 0] = 1
-
-        # mask_im = np.multiply(masks, labs)
+        mask_im = np.multiply(masks, labs)
 
 
-        skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), masks, check_contrast=False)                                   
+        skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), mask_im, check_contrast=False)                                   
 
-
-    
 
 
     files = os.listdir(restitch_folder)
 
     
     df = pd.DataFrame()
-
-
 
 
     for position, channel in enumerate(channels_to_quantify):
@@ -165,13 +159,11 @@ for i, dir in tqdm(enumerate(dirlist)):
             label_to_mean_intensity = {label: mean_intensity for label, mean_intensity in zip(stats['label'], stats['mean_intensity'])}
             label_to_mean_intensity[0] = 0
             intensity_im = np.vectorize(label_to_mean_intensity.get)(masks)
-            #for i, lab in enumerate(tqdm(stats['label'])):
-            #    intensity_image[mask == lab] = int(stats['mean_intensity'][i])
+
             skimage.io.imsave(os.path.join(intensity_image_folder, 'channel_'  + str(channel) + '.tif'), intensity_im.astype(np.uint16), check_contrast=False)
         rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
         df['label'] = stats['label']
         df['intensity_ch_' + str(channel)] = rounded_intensity
         df.to_csv(os.path.join(quantification_folder, dir + '.csv'))
-        #thresh_df.to_csv(quantification_folder + os.path.sep + file + '_thresh.csv')
 print('pipeline finished')
 
