@@ -154,11 +154,11 @@ for i, dir in tqdm(enumerate(dirlist)):
     for position, channel in enumerate(channels_to_quantify):
         measure_im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_' + str(channel) + '.tif'))
        
-        stats = skimage.measure.regionprops_table(masks, intensity_image=measure_im, properties=['label', 'mean_intensity'])
+        stats = skimage.measure.regionprops_table(mask_im, intensity_image=measure_im, properties=['label', 'mean_intensity'])
         if not os.path.isfile(os.path.join(intensity_image_folder, 'channel_' + str(channel) + '.tif')):
             label_to_mean_intensity = {label: mean_intensity for label, mean_intensity in zip(stats['label'], stats['mean_intensity'])}
             label_to_mean_intensity[0] = 0
-            intensity_im = np.vectorize(label_to_mean_intensity.get)(masks)
+            intensity_im = np.vectorize(label_to_mean_intensity.get)(mask_im)
 
             skimage.io.imsave(os.path.join(intensity_image_folder, 'channel_'  + str(channel) + '.tif'), intensity_im.astype(np.uint16), check_contrast=False)
         rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]

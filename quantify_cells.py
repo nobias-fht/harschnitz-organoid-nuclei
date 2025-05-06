@@ -15,6 +15,7 @@ import shutil
 size_threshold = 100
 
 global last_path
+
 global global_multiplier
 global seg_method
 global_multiplier = 0
@@ -24,9 +25,12 @@ CONFIG_NAME = 'config.yaml'
 with open(CONFIG_NAME, "r") as f:
 	config = yaml.safe_load(f)
 
+last_path = '/facility/imganfac/neurogenomics/harschnitz/Elisa_Colombo/background_removal/pre-deployment-test/step2/'
 
-last_path = os.getcwd()
 
+#last_path = os.getcwd()
+
+ 
 dapi_channel = config['dapi_channel']
 seg_method = 'otsu'
 
@@ -36,7 +40,7 @@ available_models = [x for x in available_models if x.endswith('.pth')]
 
 
 def on_unet_button_click():
-    global current_folder
+    global last_path
     print('run u-net')
 
     #delete the current layer 'unet segmentation'
@@ -55,8 +59,8 @@ def on_unet_button_click():
     print('model path: ' + str(model_path))
     print('yaml path: ' + str(yaml_file))
    
-    input_path = os.path.join(current_folder, 'unet_temp')
-    output_path = os.path.join(current_folder, 'unet_output')
+    input_path = os.path.join(last_path, 'unet_temp')
+    output_path = os.path.join(last_path, 'unet_output')
     fake_gt_path = os.path.join(output_path, 'fake_gt')
 
     os.makedirs(input_path, exist_ok=True)
@@ -76,8 +80,8 @@ def on_unet_button_click():
     threshold = float(text_box_unet_threshold.text())
 
     if not os.path.isfile(dst_file):
-        intensity_layer = next((layer for layer in viewer.layers if layer.name == 'raw_image'), None).data
-        skimage.io.imsave(os.path.join(current_folder, 'unet_temp', 'raw_temp.tif'), intensity_layer, check_contrast=False)
+        intensity_layer = next((layer for layer in viewer.layers if 'channel' in layer.name), None).data
+        skimage.io.imsave(os.path.join(last_path, 'unet_temp', 'raw_temp.tif'), intensity_layer, check_contrast=False)
         yaml_file, job_name = make_config(input_path, yaml_file, model_path, output_path, fake_gt_path)
         biapy = BiaPy(yaml_file, result_dir=output_path, name=job_name, run_id=1, gpu=0)
         biapy.run_job()
@@ -114,63 +118,111 @@ def toggle_positive_nuclei_visibility():
     if layer:
         layer.visible = not layer.visible  
 
+def on_file_dropdown_change(index):
+    global last_path
+
+    current_channel_name = str(dropdown_filename.itemText(index))
+
+
+    layer = next((layer for layer in viewer.layers if 'channel' in layer.name), None)
+    if layer:
+       viewer.layers.remove(layer)
+
+    layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None)
+    if layer:
+        viewer.layers.remove(layer)  
+
+    layer = next((layer for layer in viewer.layers if layer.name == 'thresholded'), None)
+    if layer:
+        viewer.layers.remove(layer)  
+    
+    layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None)
+    if layer:
+        viewer.layers.remove(layer)  
+
+    im = imread(os.path.join(last_path, 'restitched', current_channel_name))
+    viewer.add_image(im, name=current_channel_name, blending='additive', visible=True, colormap = 'green', contrast_limits=[np.amin(im), np.amax(im)])
+
+    mask_layer = next((layer for layer in viewer.layers if layer.name == 'segmentation'), None).data
+
+    
+    thresholded = np.zeros_like(mask_layer)
+    viewer.add_image(thresholded, name='thresholded', blending='additive', visible=True, colormap='red')
+
+    stats = skimage.measure.regionprops_table(mask_layer, intensity_image=im, properties=['label', 'mean_intensity', 'area'])
+    max_label = mask_layer.max()
+    lookup_array = np.zeros(max_label + 1, dtype=np.float32)
+    for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
+            if area > size_threshold:
+                lookup_array[label] = mean_intensity
+    intensity_image = lookup_array[mask_layer]
+    viewer.add_image(intensity_image, name='intensity_image', blending='additive', visible=False)
+
 def on_load_button_click():
     global last_path
     print("Load Button was clicked!")
     file_path = easygui.diropenbox(title="Select Processed Image Folder", default=last_path)
 
-    
-
     if file_path is not None:
         
         last_path = file_path
 
+        head, tail = os.path.split(file_path)
 
+        folder_name = tail
+        text_box_image_name.setText(folder_name)
 
         viewer.layers.clear()
 
-
         #load all files
-
         processed_files = os.listdir(os.path.join(file_path, 'restitched'))
-
+        processed_files.sort()
         for file in processed_files:
-            if file[-5] == dapi_channel:
+            if file[-5] == str(dapi_channel):
                 processed_files.remove(file)
 
-
-        files_list = []
-        files_names_list = []
-        for file in processed_files:
-            files_list.append(skimage.io.imread(os.path.join(file_path, 'restitched', file)))
-            files_names_list.append(file)
-        
+   
+ 
 
         #delete the current unet segmentation
+        dst_file =  os.path.join(file_path,  'unet_output', 'unet_seg.tif')
+        if os.path.isfile(dst_file):
+            os.remove(dst_file)
+
+       # base_dir = os.path.sep.join(list(file_path.split('/')[0:-2])) 
+
+        seg_dir = file_path + os.path.sep + 'cellpose'
+        seg_files = os.listdir(seg_dir)
+        seg = imread(seg_dir + os.path.sep + seg_files[0])
+        viewer.add_labels(seg, name='segmentation', blending='additive', visible=False)
+        dapi_im = skimage.io.imread(os.path.join(file_path, 'restitched', 'channel_' + str(dapi_channel) + '.tif'))
+        viewer.add_image(dapi_im, name='DAPI', blending='additive', visible=False)
+
+
+
+
+        for file in processed_files:
+            dropdown_filename.addItem(file)
+
+        #on_file_dropdown_change(0)
 
         #im = imread(file_path)
         
-        for name, ar in zip(files_names_list, files_list):
+        # for name, ar in zip(files_names_list, files_list):
 
-            viewer.add_image(ar, name=name, blending='additive', visible=True, colormap = 'green', contrast_limits=[np.amin(im), np.amax(im)])
-       
-       
-        # print('file path: ' + file_path)    
-        # head, tail = os.path.split(file_path)
+        #     viewer.add_image(ar, name=name, blending='additive', visible=True, colormap = 'green', contrast_limits=[np.amin(ar), np.amax(ar)])
+
+
         
-        # base_dir = os.path.sep.join(list(file_path.split('/')[0:-2])) 
-        # current_folder = base_dir
 
-        # dst_file =  os.path.join(current_folder,  'unet_output', 'unet_seg.tif')
-        # if os.path.isfile(dst_file):
-        #     os.remove(dst_file)
+   
 
         # seg_dir = base_dir + os.path.sep + 'cellpose'
-        # seg_files = os.listdir(seg_dir)
+        # 
         # seg = imread(seg_dir + os.path.sep + seg_files[0])
         # viewer.add_labels(seg, name='segmentation', blending='additive', visible=False)
-        # intensity_dir = base_dir + os.path.sep + 'intensity_images'
-        # intensity_image = imread(intensity_dir + os.path.sep + tail)
+        #intensity_dir = base_dir + os.path.sep + 'intensity_images'
+        #intensity_image = imread(intensity_dir + os.path.sep + tail)
 
         # stats = skimage.measure.regionprops_table(seg, intensity_image=im, properties=['label', 'mean_intensity', 'area'])
         # max_label = seg.max()
@@ -185,32 +237,10 @@ def on_load_button_click():
         
         # dapi_im = skimage.io.imread(os.path.join(base_dir, 'restitched', 'channel_' + str(dapi_channel) + '.tif'))
         # viewer.add_image(dapi_im, name='DAPI', blending='additive', visible=False)
-        # text_box_image_name.setText(tail[6:-4])
 
-    else:
-        print("No file was selected.")
+        else:
+            print("No file was selected.")
 
-def on_load_button_segmentation_click():
-    print("Load Segmentation Button was clicked!")
-    file_path = easygui.fileopenbox(title="Select Segmentation File")
-    if file_path is not None:
-        filename = os.path.basename(file_path)
-        masks = imread(file_path)
-
-        measure_im = viewer.layers['raw_image'].data
-        stats = skimage.measure.regionprops_table(masks, intensity_image=measure_im, properties=['label', 'mean_intensity', 'area'])
-        filtered_stats = {key: value[stats['area'] >= size_threshold] for key, value in stats.items()}
-        
-        max_label = masks.max()
-        lookup_array = np.zeros(max_label + 1, dtype=np.float32)
-        for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
-                if area > size_threshold:
-                    lookup_array[label] = mean_intensity
-        intensity_image = lookup_array[masks]
-        viewer.add_image(intensity_image, name='intensity_image', blending='additive', visible=False)
-        thresholded = np.zeros_like(intensity_image)
-        viewer.add_image(thresholded, name='thresholded', blending='additive', visible=True, colormap='red')
-        
         
        
     else:
@@ -247,23 +277,17 @@ def calculate_threshold(intensity_im, seg_method):
 def on_threshold_method_button_click():
     global seg_method
     global dist
-    intensity_layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None).data
 
-    viewer.layers['thresholded'].data = np.where(intensity_layer > 0, 0, 0)
     seg_method = dropdown.currentText()
     multiplier = float(text_box_multuplier.text())
     print('Segmenting with ' + seg_method + ' and multiplier ' + str(multiplier))
+
+    intensity_layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None).data
+    viewer.layers['thresholded'].data = np.where(intensity_layer > 0, 0, 0)
     thresh = calculate_threshold(intensity_layer, seg_method)
     print('using raw threshold: ' + str(thresh) + ' and multiplier: ' + str(multiplier) + ' (final = ' + str(thresh*multiplier) + ')')
     text_box_thresh.setText(str(thresh*multiplier))
     viewer.layers['thresholded'].data = np.where(intensity_layer > thresh*multiplier, 1, 0)
-
-def on_segment_button_click():
-    thresh = text_box.text()
-    thresh = int(float(thresh))
-    intensity_layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None).data
-    viewer.layers['thresholded'].data = np.where(intensity_layer > 0, 0, 0)
-    viewer.layers['thresholded'].data = np.where(intensity_layer > thresh, 1, 0)
 
 def on_slider_change(value):
     global global_multiplier
@@ -367,7 +391,7 @@ def on_apply_button_click():
  
 
         channels_to_process = os.listdir(os.path.join(folder_path, folder, 'restitched'))
-        channels_to_process = channels_to_process.sort()
+        channels_to_process.sort()
 
         for file in channels_to_process:
             unet_seg_bool = False
@@ -550,7 +574,9 @@ text_box_image_name = QLineEdit()
 text_box_image_name.setReadOnly(True)  
 layout.addWidget(text_box_image_name)
 
-
+dropdown_filename = QComboBox()
+dropdown_filename.currentIndexChanged.connect(on_file_dropdown_change)
+layout.addWidget(dropdown_filename)
 
 dropdown = QComboBox()
 dropdown.addItem("otsu")
