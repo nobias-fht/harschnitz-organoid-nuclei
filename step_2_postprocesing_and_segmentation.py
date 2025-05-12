@@ -26,16 +26,13 @@ CONFIG_NAME = 'config.yaml'
 with open(CONFIG_NAME, "r") as f:
 	config = yaml.safe_load(f)
 
-cellpose_model = config['cellpose_model']
+cellpose_model = 'models/Elisa_2024_2D'
 channels_to_quantify = config['channels']
 channel_names = config['channel_names']
 dapi_channel = config['dapi_channel']
 
 base_folder = easygui.diropenbox('Select output folder from step 1')
 output_folder = easygui.diropenbox('Select folder to store results in')
-
-#base_folder = '/facility/imganfac/neurogenomics/harschnitz/Elisa_Colombo/test_11_15'
-#output_folder = '/facility/imganfac/neurogenomics/harschnitz/Elisa_Colombo/pipeline_final/pipeline_reconfigure'
 
 
 
@@ -148,7 +145,7 @@ for i, dir in tqdm(enumerate(dirlist)):
     files = os.listdir(restitch_folder)
 
     
-    df = pd.DataFrame()
+    #df = pd.DataFrame()
 
 
     for position, channel in enumerate(channels_to_quantify):
@@ -162,8 +159,6 @@ for i, dir in tqdm(enumerate(dirlist)):
 
             skimage.io.imsave(os.path.join(intensity_image_folder, 'channel_'  + str(channel) + '.tif'), intensity_im.astype(np.uint16), check_contrast=False)
         rounded_intensity = [ '%.2f' % elem for elem in stats['mean_intensity'] ]
-        df['label'] = stats['label']
-        df['intensity_ch_' + str(channel)] = rounded_intensity
-        df.to_csv(os.path.join(quantification_folder, dir + '.csv'))
+
 print('pipeline finished')
 
