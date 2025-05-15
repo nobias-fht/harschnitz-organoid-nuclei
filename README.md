@@ -15,7 +15,7 @@ Updated 12-5-2025
 5. Add the sites: `BaSiC` and `Labkit`,  `IJBP-Plugins`, and `Local Z Projector`
 6. Move the file “local_z.py” into the Fiji folder, under the `scripts/plugins` folder. If this folder does not exist, you may have to make it.
 7. Deactivate the current environment by typing `conda deactivate`
-8. Install BiaPy into a second environment by following the instructions [here](https://biapy.readthedocs.io/en/latest/get_started/installation.html). Make sure you are using the `command line`, `Conda + pip`, and `GPU Support` tabs on that page for the correct installation instructions
+8. Install BiaPy into a second environment by following the instructions [here](https://biapy.readthedocs.io/en/latest/get_started/installation.html), and the modifications below. Make sure you are using the `command line`, `Conda + pip`, and `GPU Support` tabs on that page for the correct installation instructions, and then make the alterations at the bottom of this page.
 
 
 # Running the processing pipeline
@@ -67,3 +67,17 @@ At the end of this step, you should have segmented images and organoid masks rea
     4. Within the output folder for each image, there will be a new folder called `quantification` containing two files.
         1. `quantification.csv` will contain the raw quantification for every cell in the image for each channel, as well as a binary value (0 or 1) determining whether or not that cell was positive (above the selected threshold) or not.
         2. `summary.csv` contains summary information about the image, such as total cells, how many cells were positive for each channel, what the thresholds used were and other information.
+
+
+Update to BiaPy installation instructions
+
+conda create -n BiaPy_env python=3.10
+conda activate BiaPy_env
+conda install -c conda-forge napari pyqt
+pip install biapy
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install timm pytorch-msssim torchmetrics[image]==1.4.*
+pip install easygui
+pip install opencv-python-headless
+
+
