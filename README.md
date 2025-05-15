@@ -71,13 +71,20 @@ At the end of this step, you should have segmented images and organoid masks rea
 
 Update to BiaPy installation instructions
 
-conda create -n BiaPy_env python=3.10
-conda activate BiaPy_env
-conda install -c conda-forge napari pyqt
-pip install biapy
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install timm pytorch-msssim torchmetrics[image]==1.4.*
-pip install easygui
-pip install opencv-python-headless
+`conda create -n BiaPy_env python=3.10`
+
+`conda activate BiaPy_env`
+
+`conda install -c conda-forge napari pyqt`
+
+`pip install biapy`
+
+`pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118`
+
+`pip install timm pytorch-msssim torchmetrics[image]==1.4.*`
+
+`pip install easygui`
+
+`pip install opencv-python-headless`
 
 
