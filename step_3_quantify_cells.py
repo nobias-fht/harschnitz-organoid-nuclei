@@ -381,17 +381,8 @@ def on_apply_button_click():
             summary_labels.append('ch' + str(i) + '_positive')
             summary_labels.append('ch' + str(i) + '_unet')
             
-     
 
         summary_data = [folder, ch1_seg_method, ch2_seg_method, ch3_seg_method, ch1_scaling, ch2_scaling, ch3_scaling]
-
-        # df_summary['filename'] = [folder]
-        # df_summary['ch1_threshold_method'] = [ch1_seg_method]
-        # df_summary['ch2_threshold_method'] = [ch2_seg_method]
-        # df_summary['ch3_threshold_method'] = [ch3_seg_method]
-        # df_summary['ch1_threshold_scaling'] = [ch1_scaling]
-        # df_summary['ch2_threshold_scaling'] = [ch2_scaling]
-        # df_summary['ch3_threshold_scaling'] = [ch3_scaling]
 
 
         #get the mask for dapi channel
@@ -493,11 +484,9 @@ def on_apply_button_click():
                     summary_data.append(num_cells)
                 df['labels'] = labels
                 df[file + '_intensities'] = rounded_intensity
-                df[file + '_positive'] = classification
+                df[file[:-4] + '_positive'] = classification
                 
-                #df_summary['total_cells'] = [num_cells]
-                #df_summary[file + '_threshold'] = [round(thresh, 2)]
-                #df_summary[file + '_positive'] = [sum(classification)]
+                #ch2+3', 'ch3+4', 'ch2+4', 'ch2+3+4'
 
                 
                 summary_data.append(round(thresh, 2))
@@ -505,15 +494,68 @@ def on_apply_button_click():
                 summary_data.append(unet_seg_bool)
 
 
+    
+        binary_columns = ['channel_2_positive', 'channel_3_positive', 'channel_4_positive']
+        combinations = identify_positive_combinations(df, binary_columns)
+
+        print(combinations)
+
+        summary_labels.append('ch2+3')
+        summary_labels.append('ch3+4')
+        summary_labels.append('ch2+4')
+        summary_labels.append('ch2+3+4')
+
+        summary_data.append(combinations.get('channel_2+channel_3', 0))
+        summary_data.append(combinations.get('channel_3+channel_4', 0))
+        summary_data.append(combinations.get('channel_2+channel_4', 0))
+        summary_data.append(combinations.get('channel_2+channel_3+channel_4', 0))
         df_summary['label'] = summary_labels
         df_summary['data'] = summary_data
+
+
 
         df.to_csv(os.path.join(folder_path, folder, 'quantification', 'quantification.csv'))
         df_summary.to_csv(os.path.join(folder_path, folder, 'quantification', 'summary.csv'))
 
 
+
+
     print('processing complete')
-      
+
+
+def identify_positive_combinations(df, binary_columns):
+    """
+    Identifies all combinations of positive columns in a DataFrame with binary values.
+    
+    Args:
+        df: Pandas DataFrame containing the binary data
+        binary_columns: List of column names containing binary values (0/1)
+        
+    Returns:
+        Dictionary with combination names as keys and counts as values
+    """
+    # Initialize dictionary to store counts for each combination
+    combination_counts = {}
+    
+    # Get all possible combinations (excluding empty set)
+    from itertools import combinations
+    all_combinations = []
+    for i in range(1, len(binary_columns) + 1):
+        all_combinations.extend(combinations(binary_columns, i))
+    
+    # Count occurrences of each combination
+    for combo in all_combinations:
+        combo_name = '+'.join([col.replace('_positive', '') for col in combo])
+        
+        # A combination is present if all columns in the combo have value 1
+        combo_mask = df[list(combo)].all(axis=1)
+        combo_count = combo_mask.sum()
+        
+        combination_counts[combo_name] = combo_count
+    
+    return combination_counts
+
+
 def make_config(test_data_path, yaml_file, checkpoint_file, output_path, fake_gt_path):
     load_gt = False
 
@@ -670,6 +712,20 @@ layout2.addWidget(textbox_minsize)
 #layout2.addWidget(sep_ch1) 
 
 ch1_thresh = QLabel("Channel 2 threshold method")
+#label_ch3_unet = QLabel("Postprocessing with U-Net")
+# layout2.addWidget(label_ch3_unet)  
+# dropdown_ch3_unet = QComboBox()
+# dropdown_ch3_unet.addItem("None")
+# for model in available_models:
+#     dropdown_ch3_unet.addItem(model)
+# layout2.addWidget(dropdown_ch3_unet)
+
+# label_unet_threshold_ch3 = QLabel("Unet threshold (0-1)")
+# layout2.addWidget(label_unet_threshold_ch3)  # Add the label to the layout
+# text_box_unet_threshold_ch3 = QLineEdit()
+# text_box_unet_threshold_ch3.setReadOnly(False)  # Make the text box read-only
+# text_box_unet_threshold_ch3.setText('0.25')
+# layout2.addWidget(text_box_unet_threshold_ch3)")
 layout2.addWidget(ch1_thresh) 
 
 dropdown_ch1 = QComboBox()
