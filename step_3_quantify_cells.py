@@ -424,22 +424,22 @@ def on_apply_button_click():
                 if int(file[-5]) == 3:
                     seg_method = ch2_seg_method
                     scaling = ch2_scaling
-                    if dropdown_ch2_unet.currentIndex() != 0:
-                        unet_seg_bool = True
-                        unet_model =  dropdown_ch2_unet.currentText()
-                        unet_model_path = os.path.join('checkpoints', unet_model)
-                        unet_threshold = float(text_box_unet_threshold_ch2.text())
-                        print('using U-net on channel 2')
+                    # if dropdown_ch2_unet.currentIndex() != 0:
+                    #     unet_seg_bool = True
+                    #     unet_model =  dropdown_ch2_unet.currentText()
+                    #     unet_model_path = os.path.join('checkpoints', unet_model)
+                    #     unet_threshold = float(text_box_unet_threshold_ch2.text())
+                    #     print('using U-net on channel 2')
 
                 if int(file[-5]) == 4:
                     seg_method = ch3_seg_method
                     scaling = ch3_scaling
-                    if dropdown_ch3_unet.currentIndex() != 0:
-                        unet_seg_bool = True
-                        unet_model =  dropdown_ch3_unet.currentText()
-                        unet_model_path = os.path.join('checkpoints', unet_model)
-                        unet_threshold = float(text_box_unet_threshold_ch2.text())
-                        print('using U-net on channel 3')
+                    # if dropdown_ch3_unet.currentIndex() != 0:
+                    #     unet_seg_bool = True
+                    #     unet_model =  dropdown_ch3_unet.currentText()
+                    #     unet_model_path = os.path.join('checkpoints', unet_model)
+                    #     unet_threshold = float(text_box_unet_threshold_ch2.text())
+                    #     print('using U-net on channel 3')
 
                 seg_im, measure_im = load_images(os.path.join(folder_path, folder), folder, file)
                 rounded_intensity, classification, labels, thresh = threshold_channel(seg_method, seg_im, measure_im, scaling, size_threshold, folder_path, folder, file)
@@ -732,20 +732,20 @@ textbox_scaling_ch2.setText('1')
 
 layout2.addWidget(textbox_scaling_ch2)
 
-label_ch2_unet = QLabel("Postprocessing with U-Net")
-layout2.addWidget(label_ch2_unet)  
-dropdown_ch2_unet = QComboBox()
-dropdown_ch2_unet.addItem("None")
-for model in available_models:
-    dropdown_ch2_unet.addItem(model)
-layout2.addWidget(dropdown_ch2_unet)
+# label_ch2_unet = QLabel("Postprocessing with U-Net")
+# layout2.addWidget(label_ch2_unet)  
+# dropdown_ch2_unet = QComboBox()
+# dropdown_ch2_unet.addItem("None")
+# for model in available_models:
+#     dropdown_ch2_unet.addItem(model)
+# layout2.addWidget(dropdown_ch2_unet)
 
-label_unet_threshold_ch2 = QLabel("Unet threshold (0-1)")
-layout2.addWidget(label_unet_threshold_ch2)  # Add the label to the layout
-text_box_unet_threshold_ch2 = QLineEdit()
-text_box_unet_threshold_ch2.setReadOnly(False)  # Make the text box read-only
-text_box_unet_threshold_ch2.setText('0.25')
-layout2.addWidget(text_box_unet_threshold_ch2)
+# label_unet_threshold_ch2 = QLabel("Unet threshold (0-1)")
+# layout2.addWidget(label_unet_threshold_ch2)  # Add the label to the layout
+# text_box_unet_threshold_ch2 = QLineEdit()
+# text_box_unet_threshold_ch2.setReadOnly(False)  # Make the text box read-only
+# text_box_unet_threshold_ch2.setText('0.25')
+# layout2.addWidget(text_box_unet_threshold_ch2)
 
 #sep_ch3 = QLabel("--------------------------------------------------")
 #layout2.addWidget(sep_ch3) 
@@ -772,20 +772,20 @@ textbox_scaling_ch3.setText('1')
 
 layout2.addWidget(textbox_scaling_ch3)
 
-label_ch3_unet = QLabel("Postprocessing with U-Net")
-layout2.addWidget(label_ch3_unet)  
-dropdown_ch3_unet = QComboBox()
-dropdown_ch3_unet.addItem("None")
-for model in available_models:
-    dropdown_ch3_unet.addItem(model)
-layout2.addWidget(dropdown_ch3_unet)
+# label_ch3_unet = QLabel("Postprocessing with U-Net")
+# layout2.addWidget(label_ch3_unet)  
+# dropdown_ch3_unet = QComboBox()
+# dropdown_ch3_unet.addItem("None")
+# for model in available_models:
+#     dropdown_ch3_unet.addItem(model)
+# layout2.addWidget(dropdown_ch3_unet)
 
-label_unet_threshold_ch3 = QLabel("Unet threshold (0-1)")
-layout2.addWidget(label_unet_threshold_ch3)  # Add the label to the layout
-text_box_unet_threshold_ch3 = QLineEdit()
-text_box_unet_threshold_ch3.setReadOnly(False)  # Make the text box read-only
-text_box_unet_threshold_ch3.setText('0.25')
-layout2.addWidget(text_box_unet_threshold_ch3)
+# label_unet_threshold_ch3 = QLabel("Unet threshold (0-1)")
+# layout2.addWidget(label_unet_threshold_ch3)  # Add the label to the layout
+# text_box_unet_threshold_ch3 = QLineEdit()
+# text_box_unet_threshold_ch3.setReadOnly(False)  # Make the text box read-only
+# text_box_unet_threshold_ch3.setText('0.25')
+# layout2.addWidget(text_box_unet_threshold_ch3)
 
 sep_apply = QLabel("--------------------------------------------------")
 layout2.addWidget(sep_apply) 
