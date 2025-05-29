@@ -140,6 +140,9 @@ def on_file_dropdown_change(index):
     if layer:
         viewer.layers.remove(layer)  
 
+    layer = next((layer for layer in viewer.layers if layer.name == 'unet_segmentation'), None)
+    if layer:
+        viewer.layers.remove(layer)  
     
 
     mask_layer = next((layer for layer in viewer.layers if layer.name == 'segmentation'), None).data
