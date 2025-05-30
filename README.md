@@ -71,9 +71,9 @@ At the end of this step, you should have segmented images and organoid masks rea
 
 Update to BiaPy installation instructions
 
-`conda create -n BiaPy_env python=3.10`
+`conda create -n pipeline_env2 python=3.10`
 
-`conda activate BiaPy_env`
+`conda activate pipeline_env2`
 
 `conda install -c conda-forge napari pyqt`
 
