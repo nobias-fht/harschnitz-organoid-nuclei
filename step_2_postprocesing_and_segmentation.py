@@ -17,6 +17,33 @@ import pandas as pd
 import easygui
 print('imports finished')
 
+def make_organoid_mask(image_path, seg_im):
+            
+    temp_im = np.zeros(seg_im.shape)
+    raw_files = os.listdir(image_path)
+    for f in raw_files:
+       
+        ch_file = skimage.io.imread(os.path.join(image_path, f)) 
+        temp_im = temp_im + ch_file
+      
+    blurred = skimage.filters.gaussian(temp_im, 3)
+    thresh = skimage.filters.threshold_triangle(blurred)
+    binary = blurred > thresh  
+    binary = np.logical_or(binary, seg_im)
+    binary[binary > 0] = 1
+    h, w = binary.shape
+    border_mask = np.ones_like(binary, dtype=bool)
+    border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False
+    labs = skimage.measure.label(binary)
+    labs = labs.astype(np.uint16)
+    border_labs = np.unique(labs[border_mask])
+    for border in border_labs:
+        labs[labs == border] = 0
+
+    labs[labs > 0] = 1
+
+    return labs
+
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
@@ -53,12 +80,19 @@ for i, dir in tqdm(enumerate(dirlist)):
     restitch_folder = os.path.join(output_folder, dir, 'restitched')
     quantification_folder = os.path.join(output_folder, dir, 'quantification')
     intensity_image_folder = os.path.join(output_folder, dir, 'intensity_images')
+    organoid_mask_folder = os.path.join(output_folder, dir, 'organoid_masks')
     os.makedirs(os.path.join(output_folder, dir), exist_ok=True)
     os.makedirs(restitch_folder, exist_ok=True)
     os.makedirs(intensity_image_folder, exist_ok=True)
     os.makedirs(quantification_folder, exist_ok=True)
+    os.makedirs(organoid_mask_folder, exist_ok=True)
+    print(" ")
+    print("==================================================")
+    print('processing ' + dir)
+    print("==================================================")
 
     #if not os.path.isdir(output_folder + os.path.sep + dir):
+    print('stitching images')
     if os.path.isfile(os.path.join(restitch_folder, 'channel_4.tif')):
         print('file ' + dir + ' already stitched, skipping')
     else:
@@ -106,39 +140,50 @@ for i, dir in tqdm(enumerate(dirlist)):
                     skimage.io.imsave(os.path.join(output_folder, dir, 'restitched', filename), new_im_crop, check_contrast=False)
                         
     #cellpose segment
-    print('segmenting nuclei')
+    print('starting nuclear segmentation')
     model = models.CellposeModel(pretrained_model=cellpose_model)
     masks_folder = os.path.join(output_folder, dir, 'cellpose')
     os.makedirs(masks_folder, exist_ok=True)
 
     if os.path.isfile(masks_folder + os.path.sep + 'masks_' + dir + '.tif'):
-        print('file already segmented, skipping')
+        print('file: ' + str(dir) + ' already segmented, skipping')
         masks = skimage.io.imread(os.path.join(masks_folder, 'masks_' + dir + '.tif'))                  
     else:
         print('segmenting ' + dir)
         im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
         masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
+        skimage.io.imsave(os.path.join(masks_folder, 'prescreened_masks_' + dir + '.tif'), masks, check_contrast=False)              
     
-        organoid_mask = skimage.io.imread( os.path.join(base_folder, dir, 'slice_mask.tif'))
-         
-        binary = masks + organoid_mask
-        binary[binary > 0] = 1
+    
+    organoid_mask = make_organoid_mask(restitch_folder, masks)
+    mask_im = np.multiply(masks, organoid_mask)
+    
+    skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), mask_im, check_contrast=False)                                   
+    skimage.io.imsave(os.path.join(organoid_mask_folder, 'mask_' + dir + '.tif'), organoid_mask, check_contrast=False)                                   
 
-        h, w = binary.shape
-        border_mask = np.ones_like(binary, dtype=bool)
-        border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False       #within 3% of border
-        labs = skimage.measure.label(binary)
-        labs = labs.astype(np.uint16)
-        border_labs = np.unique(labs[border_mask])
-        for border in border_labs:
-            labs[labs == border] = 0
+    
+    # organoid_mask = skimage.io.imread( os.path.join(base_folder, dir, 'slice_mask.tif'))
+        
+    # binary = masks + organoid_mask
+    # binary[binary > 0] = 1
 
-        labs[labs > 0] = 1
+    # h, w = binary.shape
+    # border_mask = np.ones_like(binary, dtype=bool)
+    # border_mask[int(h*0.01):int(h*0.99), int(w*0.01):int(w*0.99)] = False       #within 1% of border
+    # labs = skimage.measure.label(binary)
+    # labs = labs.astype(np.uint16)
+    # border_labs = np.unique(labs[border_mask])
+    # for border in border_labs:
+    #     labs[labs == border] = 0
+    # print(border_labs)
+    # skimage.io.imsave(os.path.join(masks_folder, 'binarylabs_' + dir + '.tif'), labs.astype(np.uint16), check_contrast=False)
 
-        mask_im = np.multiply(masks, labs)
+    # labs[labs > 0] = 1
+
+ 
 
 
-        skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), mask_im, check_contrast=False)                                   
+    skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), mask_im, check_contrast=False)                                   
 
 
 
@@ -147,10 +192,11 @@ for i, dir in tqdm(enumerate(dirlist)):
     
     #df = pd.DataFrame()
 
-
+    print('starting quantification')
     for position, channel in enumerate(channels_to_quantify):
         measure_im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_' + str(channel) + '.tif'))
-       
+    
+        
         stats = skimage.measure.regionprops_table(mask_im, intensity_image=measure_im, properties=['label', 'mean_intensity'])
         if not os.path.isfile(os.path.join(intensity_image_folder, 'channel_' + str(channel) + '.tif')):
             label_to_mean_intensity = {label: mean_intensity for label, mean_intensity in zip(stats['label'], stats['mean_intensity'])}
