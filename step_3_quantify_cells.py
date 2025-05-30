@@ -501,13 +501,13 @@ def on_apply_button_click():
         print(combinations)
 
         summary_labels.append('ch2+3')
-        summary_labels.append('ch3+4')
         summary_labels.append('ch2+4')
+        summary_labels.append('ch3+4')
         summary_labels.append('ch2+3+4')
 
         summary_data.append(combinations.get('channel_2+channel_3', 0))
-        summary_data.append(combinations.get('channel_3+channel_4', 0))
         summary_data.append(combinations.get('channel_2+channel_4', 0))
+        summary_data.append(combinations.get('channel_3+channel_4', 0))
         summary_data.append(combinations.get('channel_2+channel_3+channel_4', 0))
         df_summary['label'] = summary_labels
         df_summary['data'] = summary_data
