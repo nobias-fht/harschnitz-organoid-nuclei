@@ -145,12 +145,12 @@ for (i=0; i< number_of_files; i++) {
 	    imageTitle = stripWhiteSpaces(imageTitle);
 	    run("local z");
 	    saveAs("Tiff", savePath_localz + File.separator  + imageTitle + ".tif");
-		run("Duplicate...", "use");
+		//run("Duplicate...", "use");
 	    //selectWindow("1");
-	    run("Scale...", "x=.25 y=.25 width=1121 height=1107 interpolation=Bilinear average create title=down");
-	    run("Segment Image With Labkit", "input=down segmenter_file=" + classifier + " use_gpu=true");
-	    run("Scale...", "x=4 y=4 width=4484 height=4428 interpolation=None create");
-	    save(savePath + File.separator + "slice_mask.tif");
+	    //run("Scale...", "x=.25 y=.25 width=1121 height=1107 interpolation=Bilinear average create title=down");
+	    //run("Segment Image With Labkit", "input=down segmenter_file=" + classifier + " use_gpu=true");
+	    //run("Scale...", "x=4 y=4 width=4484 height=4428 interpolation=None create");
+	    //save(savePath + File.separator + "slice_mask.tif");
 	    selectWindow(imageName);
 	    run("Z Project...", "projection=[Sum Slices]");
 	    run("16-bit");
