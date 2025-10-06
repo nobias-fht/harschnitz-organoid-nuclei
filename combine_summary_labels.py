@@ -5,6 +5,9 @@ import easygui
 file_path = easygui.diropenbox(title="Select folder where images are stored")
 
 folders = os.listdir(file_path)
+folders = [folder for folder in folders if folder != '.DS_Store']
+
+
 
 for i, folder in enumerate(folders):
     csv_path = os.path.join(file_path, folder, 'quantification', 'summary.csv')
