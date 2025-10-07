@@ -6,7 +6,7 @@ import numpy as np
 from skimage.io import imread
 import os
 import skimage
-from biapy import BiaPy
+#from biapy import BiaPy
 import pandas as pd
 import yaml
 import shutil
@@ -280,19 +280,45 @@ def calculate_threshold(intensity_im, seg_method):
     return round(thresh, 2)
 
 def on_threshold_method_button_click():
+    size_threshold = float(textbox_minsize.text()) 
     global seg_method
-    global dist
-
-    seg_method = dropdown.currentText()
-    multiplier = float(text_box_multuplier.text())
-    print('Segmenting with ' + seg_method + ' and multiplier ' + str(multiplier))
-
+    scaling = float(text_box_multuplier.text())
     intensity_layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None).data
-    viewer.layers['thresholded'].data = np.where(intensity_layer > 0, 0, 0)
-    thresh = calculate_threshold(intensity_layer, seg_method)
-    print('using raw threshold: ' + str(thresh) + ' and multiplier: ' + str(multiplier) + ' (final = ' + str(thresh*multiplier) + ')')
-    text_box_thresh.setText(str(round(thresh*multiplier, 2)))
-    viewer.layers['thresholded'].data = np.where(intensity_layer > thresh*multiplier, 1, 0)
+    mask_im = next((layer for layer in viewer.layers if layer.name == 'segmentation'), None).data
+
+    stats = skimage.measure.regionprops_table(mask_im, intensity_image=intensity_layer, properties=['label', 'mean_intensity', 'area'])    
+    filtered_stats = {key: value[stats['area'] >= size_threshold] for key, value in stats.items()}
+    max_label = mask_im.max()
+    lookup_array = np.zeros(max_label + 1, dtype=np.float32)
+    for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
+        if area > size_threshold:
+            lookup_array[label] = mean_intensity
+    intensity_image = lookup_array[mask_im]
+    thresh = calculate_threshold(intensity_image, seg_method)
+    thresh = thresh * scaling
+    positive = np.zeros(intensity_image.shape, dtype=np.uint8)
+    positive = np.where(intensity_image > thresh, 1, 0)
+    viewer.layers['thresholded'].data = positive
+    # global seg_method
+    # global dist
+    # size_threshold = float(textbox_minsize.text()) 
+    # seg_method = dropdown.currentText()
+    # multiplier = float(text_box_multuplier.text())
+    # print('Segmenting with ' + seg_method + ' and multiplier ' + str(multiplier))
+    
+    
+
+    # intensity_layer = next((layer for layer in viewer.layers if layer.name == 'intensity_image'), None).data
+    
+
+    # viewer.layers['thresholded'].data = np.where(intensity_layer > 0, 0, 0)
+    # thresh = calculate_threshold(intensity_layer, seg_method)
+    # print('using raw threshold: ' + str(thresh) + ' and multiplier: ' + str(multiplier) + ' (final = ' + str(thresh*multiplier) + ')')
+    # text_box_thresh.setText(str(round(thresh*multiplier, 2)))
+
+    # stats = skimage.measure.regionprops_table(intensity_layer, properties=['label', 'mean_intensity', 'area'])    
+    # filtered_stats = {key: value[stats['area'] >= size_threshold] for key, value in stats.items()}
+    #viewer.layers['thresholded'].data = np.where(intensity_layer > thresh*multiplier, 1, 0)
 
 def on_slider_change(value):
     global global_multiplier
@@ -313,7 +339,7 @@ def threshold_channel(seg_method, mask_im, intensity_im, scaling, size_threshold
     max_label = mask_im.max()
     lookup_array = np.zeros(max_label + 1, dtype=np.float32)
     for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
-        if area > size_threshold:
+        if area >= size_threshold:
             lookup_array[label] = mean_intensity
     intensity_image = lookup_array[mask_im]
     skimage.io.imsave(os.path.join(base_path, folder, 'intensity_images', file), intensity_image.astype(np.uint16), check_contrast=False)
@@ -522,7 +548,6 @@ def on_apply_button_click():
 
     print('processing complete')
 
-
 def identify_positive_combinations(df, binary_columns):
     """
     Identifies all combinations of positive columns in a DataFrame with binary values.
@@ -554,7 +579,6 @@ def identify_positive_combinations(df, binary_columns):
         combination_counts[combo_name] = combo_count
     
     return combination_counts
-
 
 def make_config(test_data_path, yaml_file, checkpoint_file, output_path, fake_gt_path):
     load_gt = False
