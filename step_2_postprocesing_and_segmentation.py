@@ -141,7 +141,7 @@ for i, dir in tqdm(enumerate(dirlist)):
                         
     #cellpose segment
     print('starting nuclear segmentation')
-    model = models.CellposeModel(pretrained_model=cellpose_model)
+    model = models.CellposeModel(pretrained_model=cellpose_model, gpu=True)
     masks_folder = os.path.join(output_folder, dir, 'cellpose')
     os.makedirs(masks_folder, exist_ok=True)
 
