@@ -6,7 +6,7 @@ import numpy as np
 from skimage.io import imread
 import os
 import skimage
-#from biapy import BiaPy
+from biapy import BiaPy
 import pandas as pd
 import yaml
 import shutil

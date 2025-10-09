@@ -145,15 +145,15 @@ for i, dir in tqdm(enumerate(dirlist)):
     masks_folder = os.path.join(output_folder, dir, 'cellpose')
     os.makedirs(masks_folder, exist_ok=True)
 
-    if os.path.isfile(masks_folder + os.path.sep + 'masks_' + dir + '.tif'):
-        print('file: ' + str(dir) + ' already segmented, skipping')
-        masks = skimage.io.imread(os.path.join(masks_folder, 'masks_' + dir + '.tif'))                  
-    else:
-        print('segmenting ' + dir)
-        im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
-        masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
-        skimage.io.imsave(os.path.join(masks_folder, 'prescreened_masks_' + dir + '.tif'), masks, check_contrast=False)              
-    
+    # if os.path.isfile(masks_folder + os.path.sep + 'masks_' + dir + '.tif'):
+    #     print('file: ' + str(dir) + ' already segmented, skipping')
+    #     masks = skimage.io.imread(os.path.join(masks_folder, 'masks_' + dir + '.tif'))                  
+    # else:
+    #     print('segmenting ' + dir)
+    im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
+    masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
+    skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), masks, check_contrast=False)              
+
     
     organoid_mask = make_organoid_mask(restitch_folder, masks)
     mask_im = np.multiply(masks, organoid_mask)
