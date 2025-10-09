@@ -149,7 +149,7 @@ for i, dir in tqdm(enumerate(dirlist)):
     #     print('file: ' + str(dir) + ' already segmented, skipping')
     #     masks = skimage.io.imread(os.path.join(masks_folder, 'masks_' + dir + '.tif'))                  
     # else:
-    #     print('segmenting ' + dir)
+    print('segmenting ' + dir)
     im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
     masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
     skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), masks, check_contrast=False)              
