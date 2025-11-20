@@ -10,6 +10,7 @@
 #@ Float (label="Overlap percentage", value=0.07, min=0, max=1) tileOverlap
 #@ Integer (label="Camera width in px (used for computing number of tiles)", value=1600) cameraWidth
 #@ Integer (label="Camera height in px (used for computing number of tiles)", value=1580) cameraHeight
+#@ Integer (label="Total Number of Channels", value=4) num_channels
 /////////////////////////
 // Functions
 /////////////////////////
@@ -244,10 +245,10 @@ for(fileIdx = 0; fileIdx < fileList.length; fileIdx++){
 		         
 		         if (fileset == 0) {
 		         	start_channel = 1;
-		         	end_channel = 1;
+		         	end_channel = num_channels;
 		         } else {
 		         	start_channel = 2;
-		         	end_channel = 4;
+		         	end_channel = num_channels;
 		         }
 		         
 		         
