@@ -26,19 +26,31 @@ def make_organoid_mask(image_path, seg_im):
         ch_file = skimage.io.imread(os.path.join(image_path, f)) 
         temp_im = temp_im + ch_file
       
-    blurred = skimage.filters.gaussian(temp_im, 3)
+    blurred = skimage.filters.gaussian(temp_im, 30)
     thresh = skimage.filters.threshold_triangle(blurred)
     binary = blurred > thresh  
     binary = np.logical_or(binary, seg_im)
     binary[binary > 0] = 1
-    h, w = binary.shape
-    border_mask = np.ones_like(binary, dtype=bool)
-    border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False
+    binary = skimage.morphology.remove_small_holes(binary, area_threshold=500)
+    #h, w = binary.shape
+    #border_mask = np.ones_like(binary, dtype=bool)
+    #border_mask[int(h*0.03):int(h*0.97), int(w*0.03):int(w*0.97)] = False
     labs = skimage.measure.label(binary)
     labs = labs.astype(np.uint16)
-    border_labs = np.unique(labs[border_mask])
-    for border in border_labs:
-        labs[labs == border] = 0
+    #border_labs = np.unique(labs[border_mask])
+    #for border in border_labs:
+    #    labs[labs == border] = 0
+
+    props = skimage.measure.regionprops(labs)
+    max_prop_area = 0
+    max_prop = 0
+    for prop in props:
+        if prop.label > 0:
+            if prop.area > max_prop_area:
+                max_prop = prop.label
+                max_prop_area = prop.area
+
+    labs[labs != max_prop] = 0
 
     labs[labs > 0] = 1
 
@@ -58,9 +70,13 @@ channels_to_quantify = config['channels']
 channel_names = config['channel_names']
 dapi_channel = config['dapi_channel']
 
-base_folder = easygui.diropenbox('Select output folder from step 1')
-output_folder = easygui.diropenbox('Select folder to store results in')
+temp_path = '/facility/imganfacusers/Elisa'
 
+base_folder = easygui.diropenbox('Select output folder from step 1', default=temp_path)
+output_folder = easygui.diropenbox('Select folder to store results in', default=temp_path)
+
+#base_folder = '/facility/imganfacusers/Elisa/step_1_S4_DIV50'
+#output_folder = '/facility/imganfacusers/Elisa/step_2_S4_DIV50'
 
 
 sum_folder = base_folder + os.path.sep + 'local_z'
@@ -123,6 +139,16 @@ for i, dir in tqdm(enumerate(dirlist)):
                     #check to see which the smallest axis is and reshape if necessary
                     if im.shape[0] < im.shape[2]:
                         imshape = im.shape[0]
+    # border_mask = np.ones_like(binary, dtype=bool)
+    # border_mask[int(h*0.01):int(h*0.99), int(w*0.01):int(w*0.99)] = False       #within 1% of border
+    # labs = skimage.measure.label(binary)
+    # labs = labs.astype(np.uint16)
+    # border_labs = np.unique(labs[border_mask])
+    # for border in border_labs:
+    #     labs[labs == border] = 0
+    # print(border_labs)
+    # skimage.io.imsave(os.path.join(masks_folder, 'binarylabs_' + dir + '.tif'), labs.astype(np.uint16), check_contrast=False)
+
 
                     else:
                         imshape = im.shape[2]
@@ -151,7 +177,7 @@ for i, dir in tqdm(enumerate(dirlist)):
     # else:
     print('segmenting ' + dir)
     im = skimage.io.imread(os.path.join(output_folder, dir, 'restitched', 'channel_1.tif'))
-    masks, flows, styles  = model.eval(im, diameter=None, flow_threshold=None, channels=[0,0])
+    masks, flows, styles  = model.eval(im, diameter=30.26, flow_threshold=0.4, channels=[0,0], cellprob_threshold=0.0)
     skimage.io.imsave(os.path.join(masks_folder, 'masks_' + dir + '.tif'), masks, check_contrast=False)              
 
     
