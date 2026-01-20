@@ -6,7 +6,7 @@ import numpy as np
 from skimage.io import imread
 import os
 import skimage
-from biapy import BiaPy
+#from biapy import BiaPy
 import pandas as pd
 import yaml
 import shutil
@@ -29,8 +29,9 @@ last_path = '/facility/imganfac/neurogenomics/harschnitz/Elisa_Colombo/backgroun
 
 
 #last_path = os.getcwd()
-
- 
+quant_channels = config['channels']
+channel_names = config['channel_names']
+num_channels = quant_channels
 dapi_channel = config['dapi_channel']
 seg_method = 'otsu'
 
@@ -205,7 +206,7 @@ def on_load_button_click():
 
 
 
-
+        dropdown_filename.clear()
         for file in processed_files:
             dropdown_filename.addItem(file)
 
@@ -333,14 +334,15 @@ def load_images(base_path, filename, file):
     return seg, measure
 
 def threshold_channel(seg_method, mask_im, intensity_im, scaling, size_threshold, base_path, folder, file):
-
+    num_cells_above_size_threshold = 0
     stats = skimage.measure.regionprops_table(mask_im, intensity_image=intensity_im, properties=['label', 'mean_intensity', 'area'])    
     filtered_stats = {key: value[stats['area'] >= size_threshold] for key, value in stats.items()}
     max_label = mask_im.max()
     lookup_array = np.zeros(max_label + 1, dtype=np.float32)
-    for label, mean_intensity, area in zip(stats['label'], stats['mean_intensity'], stats['area']):
+    for label, mean_intensity, area in zip(filtered_stats['label'], filtered_stats['mean_intensity'], filtered_stats['area']):
         if area >= size_threshold:
             lookup_array[label] = mean_intensity
+            num_cells_above_size_threshold = num_cells_above_size_threshold + 1
     intensity_image = lookup_array[mask_im]
     skimage.io.imsave(os.path.join(base_path, folder, 'intensity_images', file), intensity_image.astype(np.uint16), check_contrast=False)
     thresh = calculate_threshold(intensity_image, seg_method)
@@ -359,33 +361,52 @@ def threshold_channel(seg_method, mask_im, intensity_im, scaling, size_threshold
         else:
             classification.append(0)
     
-    return rounded_intensity, classification, filtered_stats['label'], thresh
+    return rounded_intensity, classification, filtered_stats['label'], thresh, num_cells_above_size_threshold
     
 def on_apply_button_click():
 
 
-    folder_path = easygui.diropenbox(title="Select Processed Image Folder")
+    folder_path = easygui.diropenbox(title="Select Processed Image Folder", default='/facility/imganfacusers/Elisa/less_channels_output/step_2')
 
     folders_to_process = os.listdir(folder_path)
     print('folder_path: ' + str(folder_path))
     
-    
-    ch1_seg_method = dropdown_ch1.currentText()
-    ch2_seg_method = dropdown_ch2.currentText()
-    ch3_seg_method = dropdown_ch3.currentText()
-    ch1_scaling = float(textbox_scaling_ch1.text())
-    ch2_scaling = float(textbox_scaling_ch2.text())
-    ch3_scaling = float(textbox_scaling_ch3.text())
+    seg_methods = [-1, -1, -1, -1]
+    scalings = [-1, -1, -1, -1]
+
+
+    if 1 in quant_channels:
+        seg_methods[0] = dropdown_ch1.currentText()
+        scalings[0] = float(textbox_scaling_ch1.text())
+        print('ch1: ' + seg_methods[0] + ' with scaling of ' + str(scalings[0]))
+
+    if 2 in quant_channels:
+        seg_methods[1] = dropdown_ch2.currentText()
+        scalings[1] = float(textbox_scaling_ch2.text())
+        print('ch2: ' + seg_methods[1] + ' with scaling of ' + str(scalings[1]))
+    if 3 in quant_channels:
+        seg_methods[2] = dropdown_ch3.currentText()
+        scalings[2] = float(textbox_scaling_ch3.text())
+        print('ch3: ' + seg_methods[2] + ' with scaling of ' + str(scalings[2]))
+    if 4 in quant_channels:
+        seg_methods[3] = dropdown_ch4.currentText()
+        scalings[3] = float(textbox_scaling_ch4.text())
+        print('ch4: ' + seg_methods[3] + ' with scaling of ' + str(scalings[3]))
+
+
+    # ch1_seg_method = dropdown_ch1.currentText()
+    # ch2_seg_method = dropdown_ch2.currentText()
+    # ch3_seg_method = dropdown_ch3.currentText()
+    # ch1_scaling = float(textbox_scaling_ch1.text())
+    # ch2_scaling = float(textbox_scaling_ch2.text())
+    # ch3_scaling = float(textbox_scaling_ch3.text())
+    print('segmentation methods: ' + str(seg_methods))
+    print('scalings: ' + str(scalings))
+
 
     size_threshold = float(textbox_minsize.text())
     
-    print('ch1: ' + ch1_seg_method + ' with scaling of ' + str(ch1_scaling))
-    print('ch2: ' + ch2_seg_method + ' with scaling of ' + str(ch2_scaling))
-    print('ch3: ' + ch3_seg_method + ' with scaling of ' + str(ch3_scaling))
-    
 
-
-    
     for folder in folders_to_process:
         print('============================================')
         print('processing file: ' + str(folder))
@@ -400,16 +421,28 @@ def on_apply_button_click():
         df = pd.DataFrame()
         df_summary = pd.DataFrame()
 
+        summary_labels = []
+        summary_data = []
 
-        summary_labels = ['filename', 'ch2_threshold_method', 'ch3_threshold_method', 'ch4_threshold_method', 'ch2_threshold_scaling', 'ch3_threshold_scaling', 'ch4_threshold_scaling', 'total_cells']
-        for i in range(2, 5):
-            summary_labels.append('ch' + str(i) + '_threshold') 
-            summary_labels.append('ch' + str(i) + '_positive')
-            summary_labels.append('ch' + str(i) + '_unet')
+        summary_labels.append('filename') #'ch2_threshold_method', 'ch3_threshold_method', 'ch4_threshold_method', 'ch2_threshold_scaling', 'ch3_threshold_scaling', 'ch4_threshold_scaling', 'total_cells']
+        summary_data.append(folder)
+        
+        for i in quant_channels:
+            summary_labels.append('ch' + str(i) + '_threshold_method')
+            summary_data.append(seg_methods[i-1])
+
+        
+        for i in quant_channels:
+            summary_labels.append('ch' + str(i) + '_threshold_scaling')
+            summary_data.append(scalings[i-1])
+
+
             
+  
+           
+        #summary_data = [folder, ch1_seg_method, ch2_seg_method, ch3_seg_method, ch1_scaling, ch2_scaling, ch3_scaling]
 
-        summary_data = [folder, ch1_seg_method, ch2_seg_method, ch3_seg_method, ch1_scaling, ch2_scaling, ch3_scaling]
-
+        print('summary data' + str(summary_data))
 
         #get the mask for dapi channel
         dapi_im = skimage.io.imread(os.path.join(folder_path, folder, 'restitched', 'channel_' + str(dapi_channel) + '.tif'))
@@ -419,47 +452,62 @@ def on_apply_button_click():
         binary = dapi_downscale_blur > thresh  
         mask_upscaled = skimage.transform.resize(binary, dapi_im.shape, anti_aliasing=False)
         skimage.io.imsave(os.path.join(folder_path, folder, 'organoid_masks', 'mask_' + folder + '.tif'), mask_upscaled.astype(np.uint8), check_contrast=False)
- 
 
-        channels_to_process = os.listdir(os.path.join(folder_path, folder, 'restitched'))
-        channels_to_process.sort()
+        #channels_to_process = os.listdir(os.path.join(folder_path, folder, 'restitched'))
+        #channels_to_process.sort()
+        channels_to_process = []
+        channels_to_process_int = []
+        for i in quant_channels:
+            channels_to_process_int.append(i)
+            channels_to_process.append('channel_' + str(i) + '.tif')
 
-        for file in channels_to_process:
+        for i, file in zip(channels_to_process_int, channels_to_process):
+            
             unet_seg_bool = False
             if str(dapi_channel) not in file:
                 print('processing: ' + str(file))
                 
-                if int(file[-5]) == 2:
-                    seg_method = ch1_seg_method
-                    scaling = ch1_scaling
+                current_channel = int(file[-5])    
+                seg_method = seg_methods[current_channel-1]
+                scaling = scalings[current_channel-1]
+                
+                if i == 1:
                     if dropdown_ch1_unet.currentIndex() != 0:
                         unet_seg_bool = True
                         unet_model =  dropdown_ch1_unet.currentText()
                         unet_model_path = os.path.join('checkpoints', unet_model)
                         unet_threshold = float(text_box_unet_threshold_ch1.text())
-                        print('using U-net on channel 1')
-                if int(file[-5]) == 3:
-                    seg_method = ch2_seg_method
-                    scaling = ch2_scaling
-                    # if dropdown_ch2_unet.currentIndex() != 0:
-                    #     unet_seg_bool = True
-                    #     unet_model =  dropdown_ch2_unet.currentText()
-                    #     unet_model_path = os.path.join('checkpoints', unet_model)
-                    #     unet_threshold = float(text_box_unet_threshold_ch2.text())
-                    #     print('using U-net on channel 2')
+                        print('using U-net on channel ' + str(i))
+            
+                if i == 2:
+                    if dropdown_ch2_unet.currentIndex() != 0:
+                        unet_seg_bool = True
+                        unet_model =  dropdown_ch2_unet.currentText()
+                        unet_model_path = os.path.join('checkpoints', unet_model)
+                        unet_threshold = float(text_box_unet_threshold_ch2.text())
+                        print('using U-net on channel ' + str(i))
 
-                if int(file[-5]) == 4:
-                    seg_method = ch3_seg_method
-                    scaling = ch3_scaling
-                    # if dropdown_ch3_unet.currentIndex() != 0:
-                    #     unet_seg_bool = True
-                    #     unet_model =  dropdown_ch3_unet.currentText()
-                    #     unet_model_path = os.path.join('checkpoints', unet_model)
-                    #     unet_threshold = float(text_box_unet_threshold_ch2.text())
-                    #     print('using U-net on channel 3')
+                if i == 3:
+                    if dropdown_ch3_unet.currentIndex() != 0:
+                        unet_seg_bool = True
+                        unet_model =  dropdown_ch3_unet.currentText()
+                        unet_model_path = os.path.join('checkpoints', unet_model)
+                        unet_threshold = float(text_box_unet_threshold_ch3.text())
+                        print('using U-net on channel ' + str(i))
+                    
+                if i == 4:
+                    if dropdown_ch4_unet.currentIndex() != 0:
+                        unet_seg_bool = True
+                        unet_model =  dropdown_ch4_unet.currentText()
+                        unet_model_path = os.path.join('checkpoints', unet_model)
+                        unet_threshold = float(text_box_unet_threshold_ch4.text())
+                        print('using U-net on channel ' + str(i))
+              
 
                 seg_im, measure_im = load_images(os.path.join(folder_path, folder), folder, file)
-                rounded_intensity, classification, labels, thresh = threshold_channel(seg_method, seg_im, measure_im, scaling, size_threshold, folder_path, folder, file)
+                rounded_intensity, classification, labels, thresh, num_cells = threshold_channel(seg_method, seg_im, measure_im, scaling, size_threshold, folder_path, folder, file)
+
+    
 
                 if unet_seg_bool:
                 # if unet needs to be run
@@ -505,36 +553,49 @@ def on_apply_button_click():
 
                     skimage.io.imsave(os.path.join(folder_path, folder, 'positive_cells', file), thresholded.astype(np.uint8), check_contrast=False)
 
-                if file == 'channel_2.tif':
-                    num_cells = np.amax(labels)
-                    summary_data.append(num_cells)
+          
                 df['labels'] = labels
                 df[file + '_intensities'] = rounded_intensity
                 df[file[:-4] + '_positive'] = classification
                 
-                #ch2+3', 'ch3+4', 'ch2+4', 'ch2+3+4'
 
-                
+                if 'total_cells' not in summary_labels:
+                    summary_data.append(num_cells)
+                    summary_labels.append('total_cells')
+
+                summary_labels.append('ch' + str(i) + '_threshold') 
+                summary_labels.append('ch' + str(i) + '_positive')
+                summary_labels.append('ch' + str(i) + '_unet')
                 summary_data.append(round(thresh, 2))
                 summary_data.append(sum(classification))
                 summary_data.append(unet_seg_bool)
 
-
-    
-        binary_columns = ['channel_2_positive', 'channel_3_positive', 'channel_4_positive']
+          
+        binary_columns = []
+        for channel_temp in quant_channels:
+            binary_columns.append('channel_' + str(channel_temp) + '_positive' )
+        #binary_columns = ['channel_2_positive', 'channel_3_positive', 'channel_4_positive']
         combinations = identify_positive_combinations(df, binary_columns)
 
         print(combinations)
+        for key in combinations.keys():
+            summary_labels.append(key)
+            summary_data.append(combinations.get(key, 0))
 
-        summary_labels.append('ch2+3')
-        summary_labels.append('ch2+4')
-        summary_labels.append('ch3+4')
-        summary_labels.append('ch2+3+4')
+        print('summary_labels')
+        print(summary_labels)
+        print('summary_data')
+        print(summary_data)
 
-        summary_data.append(combinations.get('channel_2+channel_3', 0))
-        summary_data.append(combinations.get('channel_2+channel_4', 0))
-        summary_data.append(combinations.get('channel_3+channel_4', 0))
-        summary_data.append(combinations.get('channel_2+channel_3+channel_4', 0))
+        # summary_labels.append('ch2+3')
+        # summary_labels.append('ch2+4')
+        # summary_labels.append('ch3+4')
+        # summary_labels.append('ch2+3+4')
+
+        # summary_data.append(combinations.get('channel_2+channel_3', 0))
+        # summary_data.append(combinations.get('channel_2+channel_4', 0))
+        # summary_data.append(combinations.get('channel_3+channel_4', 0))
+        # summary_data.append(combinations.get('channel_2+channel_3+channel_4', 0))
         df_summary['label'] = summary_labels
         df_summary['data'] = summary_data
 
@@ -732,143 +793,180 @@ textbox_minsize.setReadOnly(False)
 textbox_minsize.setText('100')
 layout2.addWidget(textbox_minsize)
 
-#sep_ch1 = QLabel("--------------------------------------------------")
-#layout2.addWidget(sep_ch1) 
+current_channel = 0
+if 1 in quant_channels:
+    
+    sep_ch1 = QLabel("-----------------------" + channel_names[current_channel] + "---------------------------")
+    current_channel = current_channel+1
 
-ch1_thresh = QLabel("Channel 2 threshold method")
-#label_ch3_unet = QLabel("Postprocessing with U-Net")
-# layout2.addWidget(label_ch3_unet)  
-# dropdown_ch3_unet = QComboBox()
-# dropdown_ch3_unet.addItem("None")
-# for model in available_models:
-#     dropdown_ch3_unet.addItem(model)
-# layout2.addWidget(dropdown_ch3_unet)
+    layout2.addWidget(sep_ch1) 
+    ch1_thresh = QLabel("Channel 1 threshold method")
 
-# label_unet_threshold_ch3 = QLabel("Unet threshold (0-1)")
-# layout2.addWidget(label_unet_threshold_ch3)  # Add the label to the layout
-# text_box_unet_threshold_ch3 = QLineEdit()
-# text_box_unet_threshold_ch3.setReadOnly(False)  # Make the text box read-only
-# text_box_unet_threshold_ch3.setText('0.25')
-# layout2.addWidget(text_box_unet_threshold_ch3)")
-layout2.addWidget(ch1_thresh) 
+    layout2.addWidget(ch1_thresh) 
 
-dropdown_ch1 = QComboBox()
-dropdown_ch1.addItem("otsu")
-dropdown_ch1.addItem("triangle")
-dropdown_ch1.addItem("isodata")
-dropdown_ch1.addItem("li")
-dropdown_ch1.addItem("mean")
-dropdown_ch1.addItem("minimum")
-dropdown_ch1.addItem("yen")
-layout2.addWidget(dropdown_ch1)
+    dropdown_ch1 = QComboBox()
+    dropdown_ch1.addItem("otsu")
+    dropdown_ch1.addItem("triangle")
+    dropdown_ch1.addItem("isodata")
+    dropdown_ch1.addItem("li")
+    dropdown_ch1.addItem("mean")
+    dropdown_ch1.addItem("minimum")
+    dropdown_ch1.addItem("yen")
+    layout2.addWidget(dropdown_ch1)
 
-label_ch1_scaling = QLabel("Channel 2 scaling")
-layout2.addWidget(label_ch1_scaling)  
-textbox_scaling_ch1 = QLineEdit()
-textbox_scaling_ch1.setReadOnly(False)  
-textbox_scaling_ch1.setText('1')
-layout2.addWidget(textbox_scaling_ch1)
+    label_ch1_scaling = QLabel("Channel 1 scaling")
+    layout2.addWidget(label_ch1_scaling)  
+    textbox_scaling_ch1 = QLineEdit()
+    textbox_scaling_ch1.setReadOnly(False)  
+    textbox_scaling_ch1.setText('1')
+    layout2.addWidget(textbox_scaling_ch1)
 
 
-label_ch1_unet = QLabel("Postprocessing with U-Net")
-layout2.addWidget(label_ch1_unet)  
-dropdown_ch1_unet = QComboBox()
-dropdown_ch1_unet.addItem("None")
-for model in available_models:
-    dropdown_ch1_unet.addItem(model)
-layout2.addWidget(dropdown_ch1_unet)
+    label_ch1_unet = QLabel("Postprocessing with U-Net")
+    layout2.addWidget(label_ch1_unet)  
+    dropdown_ch1_unet = QComboBox()
+    dropdown_ch1_unet.addItem("None")
+    for model in available_models:
+        dropdown_ch1_unet.addItem(model)
+    layout2.addWidget(dropdown_ch1_unet)
 
-label_unet_threshold_ch1 = QLabel("Unet threshold (0-1)")
-layout2.addWidget(label_unet_threshold_ch1)  # Add the label to the layout
-text_box_unet_threshold_ch1 = QLineEdit()
-text_box_unet_threshold_ch1.setReadOnly(False)  # Make the text box read-only
-text_box_unet_threshold_ch1.setText('0.25')
-layout2.addWidget(text_box_unet_threshold_ch1)
-
-#sep_ch2 = QLabel("--------------------------------------------------")
-#layout2.addWidget(sep_ch2) 
+    label_unet_threshold_ch1 = QLabel("Unet threshold (0-1)")
+    layout2.addWidget(label_unet_threshold_ch1)  # Add the label to the layout
+    text_box_unet_threshold_ch1 = QLineEdit()
+    text_box_unet_threshold_ch1.setReadOnly(False)  # Make the text box read-only
+    text_box_unet_threshold_ch1.setText('0.25')
+    layout2.addWidget(text_box_unet_threshold_ch1)
 
 
-ch2_thresh = QLabel("Channel 3 threshold method")
-layout2.addWidget(ch2_thresh) 
-dropdown_ch2 = QComboBox()
-dropdown_ch2.addItem("otsu")
-dropdown_ch2.addItem("triangle")
-dropdown_ch2.addItem("isodata")
-dropdown_ch2.addItem("li")
-dropdown_ch2.addItem("mean")
-dropdown_ch2.addItem("minimum")
-dropdown_ch2.addItem("yen")
 
-layout2.addWidget(dropdown_ch2)
+if 2 in quant_channels:
+    sep_ch2 = QLabel("-----------------------" + channel_names[current_channel] + "---------------------------")
+    current_channel = current_channel+1
+    layout2.addWidget(sep_ch2) 
+    ch2_thresh = QLabel("Channel 2 threshold method")
+    layout2.addWidget(ch2_thresh) 
+    dropdown_ch2 = QComboBox()
+    dropdown_ch2.addItem("otsu")
+    dropdown_ch2.addItem("triangle")
+    dropdown_ch2.addItem("isodata")
+    dropdown_ch2.addItem("li")
+    dropdown_ch2.addItem("mean")
+    dropdown_ch2.addItem("minimum")
+    dropdown_ch2.addItem("yen")
+
+    layout2.addWidget(dropdown_ch2)
 
 
-label_ch2_scaling = QLabel("Channel 3 scaling")
-layout2.addWidget(label_ch2_scaling)  
+    label_ch2_scaling = QLabel("Channel 2 scaling")
+    layout2.addWidget(label_ch2_scaling)  
 
-textbox_scaling_ch2 = QLineEdit()
-textbox_scaling_ch2.setReadOnly(False) 
-textbox_scaling_ch2.setText('1')
+    textbox_scaling_ch2 = QLineEdit()
+    textbox_scaling_ch2.setReadOnly(False) 
+    textbox_scaling_ch2.setText('1')
 
-layout2.addWidget(textbox_scaling_ch2)
+    layout2.addWidget(textbox_scaling_ch2)
 
-# label_ch2_unet = QLabel("Postprocessing with U-Net")
-# layout2.addWidget(label_ch2_unet)  
-# dropdown_ch2_unet = QComboBox()
-# dropdown_ch2_unet.addItem("None")
-# for model in available_models:
-#     dropdown_ch2_unet.addItem(model)
-# layout2.addWidget(dropdown_ch2_unet)
+    label_ch2_unet = QLabel("Postprocessing with U-Net")
+    layout2.addWidget(label_ch2_unet)  
+    dropdown_ch2_unet = QComboBox()
+    dropdown_ch2_unet.addItem("None")
+    for model in available_models:
+        dropdown_ch2_unet.addItem(model)
+    layout2.addWidget(dropdown_ch2_unet)
 
-# label_unet_threshold_ch2 = QLabel("Unet threshold (0-1)")
-# layout2.addWidget(label_unet_threshold_ch2)  # Add the label to the layout
-# text_box_unet_threshold_ch2 = QLineEdit()
-# text_box_unet_threshold_ch2.setReadOnly(False)  # Make the text box read-only
-# text_box_unet_threshold_ch2.setText('0.25')
-# layout2.addWidget(text_box_unet_threshold_ch2)
+    label_unet_threshold_ch2 = QLabel("Unet threshold (0-1)")
+    layout2.addWidget(label_unet_threshold_ch2)  # Add the label to the layout
+    text_box_unet_threshold_ch2 = QLineEdit()
+    text_box_unet_threshold_ch2.setReadOnly(False)  # Make the text box read-only
+    text_box_unet_threshold_ch2.setText('0.25')
+    layout2.addWidget(text_box_unet_threshold_ch2)
 
-#sep_ch3 = QLabel("--------------------------------------------------")
-#layout2.addWidget(sep_ch3) 
 
-ch3_thresh = QLabel("Channel 4 threshold method")
-layout2.addWidget(ch3_thresh) 
-dropdown_ch3 = QComboBox()
-dropdown_ch3.addItem("otsu")
-dropdown_ch3.addItem("triangle")
-dropdown_ch3.addItem("isodata")
-dropdown_ch3.addItem("li")
-dropdown_ch3.addItem("mean")
-dropdown_ch3.addItem("minimum")
-dropdown_ch3.addItem("yen")
+if 3 in quant_channels: 
+    sep_ch3 = QLabel("-----------------------" + channel_names[current_channel] + "---------------------------")
+    current_channel = current_channel+1
+    layout2.addWidget(sep_ch3) 
 
-layout2.addWidget(dropdown_ch3)
+    ch3_thresh = QLabel("Channel 3 threshold method")
+    layout2.addWidget(ch3_thresh) 
+    dropdown_ch3 = QComboBox()
+    dropdown_ch3.addItem("otsu")
+    dropdown_ch3.addItem("triangle")
+    dropdown_ch3.addItem("isodata")
+    dropdown_ch3.addItem("li")
+    dropdown_ch3.addItem("mean")
+    dropdown_ch3.addItem("minimum")
+    dropdown_ch3.addItem("yen")
 
-label_ch3_scaling = QLabel("Channel 4 scaling")
-layout2.addWidget(label_ch3_scaling)  
+    layout2.addWidget(dropdown_ch3)
 
-textbox_scaling_ch3 = QLineEdit()
-textbox_scaling_ch3.setReadOnly(False)
-textbox_scaling_ch3.setText('1')
+    label_ch3_scaling = QLabel("Channel 3 scaling")
+    layout2.addWidget(label_ch3_scaling)  
 
-layout2.addWidget(textbox_scaling_ch3)
+    textbox_scaling_ch3 = QLineEdit()
+    textbox_scaling_ch3.setReadOnly(False)
+    textbox_scaling_ch3.setText('1')
 
-# label_ch3_unet = QLabel("Postprocessing with U-Net")
-# layout2.addWidget(label_ch3_unet)  
-# dropdown_ch3_unet = QComboBox()
-# dropdown_ch3_unet.addItem("None")
-# for model in available_models:
-#     dropdown_ch3_unet.addItem(model)
-# layout2.addWidget(dropdown_ch3_unet)
+    layout2.addWidget(textbox_scaling_ch3)
 
-# label_unet_threshold_ch3 = QLabel("Unet threshold (0-1)")
-# layout2.addWidget(label_unet_threshold_ch3)  # Add the label to the layout
-# text_box_unet_threshold_ch3 = QLineEdit()
-# text_box_unet_threshold_ch3.setReadOnly(False)  # Make the text box read-only
-# text_box_unet_threshold_ch3.setText('0.25')
-# layout2.addWidget(text_box_unet_threshold_ch3)
 
-sep_apply = QLabel("--------------------------------------------------")
-layout2.addWidget(sep_apply) 
+    label_ch3_unet = QLabel("Postprocessing with U-Net")
+    layout2.addWidget(label_ch3_unet)  
+    dropdown_ch3_unet = QComboBox()
+    dropdown_ch3_unet.addItem("None")
+    for model in available_models:
+        dropdown_ch3_unet.addItem(model)
+    layout2.addWidget(dropdown_ch3_unet)
+
+    label_unet_threshold_ch3 = QLabel("Unet threshold (0-1)")
+    layout2.addWidget(label_unet_threshold_ch3)  # Add the label to the layout
+    text_box_unet_threshold_ch3 = QLineEdit()
+    text_box_unet_threshold_ch3.setReadOnly(False)  # Make the text box read-only
+    text_box_unet_threshold_ch3.setText('0.25')
+    layout2.addWidget(text_box_unet_threshold_ch3)
+
+
+if 4 in quant_channels:
+
+    sep_ch4 = QLabel("-----------------------" + channel_names[current_channel] + "---------------------------")
+    current_channel = current_channel+1    
+    layout2.addWidget(sep_ch4) 
+    ch4_thresh = QLabel("Channel 4 threshold method")
+    layout2.addWidget(ch4_thresh) 
+    dropdown_ch4 = QComboBox()
+    dropdown_ch4.addItem("otsu")
+    dropdown_ch4.addItem("triangle")
+    dropdown_ch4.addItem("isodata")
+    dropdown_ch4.addItem("li")
+    dropdown_ch4.addItem("mean")
+    dropdown_ch4.addItem("minimum")
+    dropdown_ch4.addItem("yen")
+
+    layout2.addWidget(dropdown_ch4)
+
+    label_ch4_scaling = QLabel("Channel 4 scaling")
+    layout2.addWidget(label_ch4_scaling)  
+
+    textbox_scaling_ch4 = QLineEdit()
+    textbox_scaling_ch4.setReadOnly(False)
+    textbox_scaling_ch4.setText('1')
+
+    layout2.addWidget(textbox_scaling_ch4)
+
+    label_ch4_unet = QLabel("Postprocessing with U-Net")
+    layout2.addWidget(label_ch4_unet)  
+    dropdown_ch4_unet = QComboBox()
+    dropdown_ch4_unet.addItem("None")
+    for model in available_models:
+        dropdown_ch4_unet.addItem(model)
+    layout2.addWidget(dropdown_ch4_unet)
+
+    label_unet_threshold_ch4 = QLabel("Unet threshold (0-1)")
+    layout2.addWidget(label_unet_threshold_ch4)  # Add the label to the layout
+    text_box_unet_threshold_ch4 = QLineEdit()
+    text_box_unet_threshold_ch4.setReadOnly(False)  # Make the text box read-only
+    text_box_unet_threshold_ch4.setText('0.25')
+    layout2.addWidget(text_box_unet_threshold_ch4)
 
 
 apply_button = QPushButton("Apply Threshold to Folder")
